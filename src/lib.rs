@@ -10,14 +10,14 @@ use std::rc::Rc;
 
 // TODO Add type alias/trait: TestCaseCoro = Coroutine<Return = ()>
 
-pub fn drive<Value, R>(
+pub fn drive<Value>(
     mut test_case_generator: impl Coroutine<Yield = Value, Return = ()> + Unpin,
-    satisfied: impl Fn(Value) -> bool,
+    is_test_case_passed: impl Fn(Value) -> bool,
 ) -> bool {
     loop {
         match Pin::new(&mut test_case_generator).resume(()) {
             CoroutineState::Yielded(val) => {
-                if !satisfied(val) {
+                if !is_test_case_passed(val) {
                     return false;
                 }
             }
@@ -63,6 +63,6 @@ mod tests {
     fn frob() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let generator = (0..100).make_gen(100, rng);
-        drive::<usize, ()>(Box::new(generator), |n| n % 2 == 0 || n % 2 == 1);
+        drive::<usize>(Box::new(generator), |n| n % 2 == 0 || n % 2 == 1);
     }
 }
