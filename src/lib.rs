@@ -1,10 +1,7 @@
 // https://doc.rust-lang.org/unstable-book/language-features/coroutines.html
 #![feature(coroutines, coroutine_trait)]
 
-use rand::{
-    RngExt, SeedableRng,
-    rngs::{StdRng, SysRng},
-};
+use rand::{RngExt, rngs::StdRng};
 use std::cell::RefCell;
 use std::ops::Range;
 use std::ops::{Coroutine, CoroutineState};
@@ -13,11 +10,10 @@ use std::rc::Rc;
 
 // TODO Add type alias/trait: TestCaseCoro = Coroutine<Return = ()>
 
-pub fn drive<C, Value, R, F>(mut test_case_generator: Box<C>, satisfied: F) -> bool
-where
-    C: Coroutine<Yield = Value, Return = ()> + Unpin,
-    F: Fn(Value) -> bool,
-{
+pub fn drive<Value, R>(
+    mut test_case_generator: impl Coroutine<Yield = Value, Return = ()> + Unpin,
+    satisfied: impl Fn(Value) -> bool,
+) -> bool {
     loop {
         match Pin::new(&mut test_case_generator).resume(()) {
             CoroutineState::Yielded(val) => {
@@ -25,7 +21,7 @@ where
                     return false;
                 }
             }
-            CoroutineState::Complete(_) => return true,
+            CoroutineState::Complete(()) => return true,
         }
     }
 }
@@ -60,12 +56,13 @@ impl TestCaseGenerator for Range<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::SeedableRng;
+    use rand::rngs::SysRng;
 
     #[test]
     fn frob() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
-        // TODO Take rng out of TestDriver and ditch TestDriver for simplicity
         let generator = (0..100).make_gen(100, rng);
-        drive::<_, usize, (), _>(Box::new(generator), |n| n % 2 == 0 || n % 2 == 1);
+        drive::<usize, ()>(Box::new(generator), |n| n % 2 == 0 || n % 2 == 1);
     }
 }
