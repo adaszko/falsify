@@ -1,63 +1,83 @@
 // https://doc.rust-lang.org/unstable-book/language-features/coroutines.html
-#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+#![feature(coroutines, coroutine_trait)]
 
 use rand::{
-    SeedableRng,
+    RngExt, SeedableRng,
     rngs::{StdRng, SysRng},
 };
+use std::cell::RefCell;
+use std::ops::Range;
+use std::ops::{Coroutine, CoroutineState};
+use std::pin::Pin;
+use std::rc::Rc;
 
 pub struct TestDriver {
-    rng: StdRng,
+    rng: Rc<RefCell<StdRng>>,
 }
 
 impl TestDriver {
-    fn new() -> Self {
-        let rng = StdRng::try_from_rng(&mut SysRng).unwrap();
+    fn from_random_seed() -> Self {
+        let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         Self { rng }
     }
 
     pub fn from_seed(seed: u64) -> Self {
-        let rng = StdRng::seed_from_u64(seed);
+        let rng = Rc::new(RefCell::new(StdRng::seed_from_u64(seed)));
         Self { rng }
+    }
+
+    pub fn drive<C, Value, R, F>(mut test_case_generator: Box<C>, satisfied: F) -> bool
+    where
+        C: Coroutine<Yield = Value, Return = ()> + Unpin,
+        F: Fn(Value) -> bool,
+    {
+        loop {
+            match Pin::new(&mut test_case_generator).resume(()) {
+                CoroutineState::Yielded(val) => {
+                    if !satisfied(val) {
+                        return false;
+                    }
+                }
+                CoroutineState::Complete(_) => return true,
+            }
+        }
+    }
+}
+
+pub trait TestCaseGenerator {
+    fn make_gen(&self, size: usize, rng: Rc<RefCell<StdRng>>) -> impl Coroutine;
+}
+
+// TODO Confusing mismatch: TestCaseGenerator implemented for a range but generates usizes
+impl TestCaseGenerator for Range<usize> {
+    fn make_gen(
+        &self,
+        num_test_cases: usize,
+        rng: Rc<RefCell<StdRng>>,
+    ) -> impl Coroutine<Yield = usize, Return = ()> {
+        #[coroutine]
+        move || {
+            for _ in 0..num_test_cases {
+                let value = {
+                    let mut r = rng.borrow_mut();
+                    let v = r.random_range(self.clone());
+                    v
+                };
+                yield value;
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::ops::{Coroutine, CoroutineState};
-    use std::pin::Pin;
-
-    use rand::seq::SliceRandom;
-
     use super::*;
 
     #[test]
-    fn reverse_round_trip() {
-        // TODO: Generate 100s of test cases, not just one
-        let mut driver = TestDriver::new();
-        let mut nums: Vec<i32> = (1..100).collect();
-        nums.shuffle(&mut driver.rng);
-        let before = nums.clone();
-        nums.reverse();
-        nums.reverse();
-        assert_eq!(nums, before);
-    }
-
-    #[test]
-    fn it_works() {
-        let mut coroutine = #[coroutine]
-        || {
-            yield 1;
-            return "foo";
-        };
-
-        match Pin::new(&mut coroutine).resume(()) {
-            CoroutineState::Yielded(1) => {}
-            _ => panic!("unexpected value from resume"),
-        }
-        match Pin::new(&mut coroutine).resume(()) {
-            CoroutineState::Complete("foo") => {}
-            _ => panic!("unexpected value from resume"),
-        }
+    fn frob() {
+        // TODO Take rng out of TestDriver and ditch TestDriver for simplicity
+        let driver = TestDriver::from_random_seed();
+        let generator = (0..100).make_gen(100, driver.rng);
+        TestDriver::drive::<_, usize, (), _>(Box::new(generator), |n| n % 2 == 0 || n % 2 == 1);
     }
 }
