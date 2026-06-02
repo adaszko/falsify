@@ -27,13 +27,13 @@ pub fn drive<Value>(
 }
 
 // TODO drive() takes a coroutine type directly so this trait probably isn't necessary
-pub trait TestCaseGenerator {
+pub trait TestCaseGen {
     fn make_gen(&self, size: usize, rng: Rc<RefCell<StdRng>>) -> impl Coroutine;
 }
 
 // TODO Confusing mismatch: TestCaseGenerator implemented for a range but generates usizes
 // TODO Instead of impl on a Range, take min and max as either constructor args or fn args.
-impl TestCaseGenerator for Range<usize> {
+impl TestCaseGen for Range<usize> {
     fn make_gen(
         &self,
         num_test_cases: usize,
