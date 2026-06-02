@@ -26,15 +26,14 @@ pub fn drive<Value>(
     }
 }
 
-// TODO drive() takes a coroutine type directly so this trait probably isn't necessary
-pub trait TestCaseGen {
-    fn make_gen(&self, size: usize, rng: Rc<RefCell<StdRng>>) -> impl Coroutine;
+pub trait Arb {
+    fn arb(&self, size: usize, rng: Rc<RefCell<StdRng>>) -> impl Coroutine;
 }
 
-// TODO Confusing mismatch: TestCaseGenerator implemented for a range but generates usizes
+// TODO Confusing mismatch: Arb implemented for a range but generates usizes
 // TODO Instead of impl on a Range, take min and max as either constructor args or fn args.
-impl TestCaseGen for Range<usize> {
-    fn make_gen(
+impl Arb for Range<usize> {
+    fn arb(
         &self,
         num_test_cases: usize,
         rng: Rc<RefCell<StdRng>>,
@@ -62,7 +61,7 @@ mod tests {
     #[test]
     fn frob() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
-        let generator = (0..100).make_gen(100, rng);
+        let generator = (0..100).arb(100, rng);
         drive::<usize>(Box::new(generator), |n| n % 2 == 0 || n % 2 == 1);
     }
 }
