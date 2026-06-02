@@ -11,6 +11,8 @@ use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 use std::rc::Rc;
 
+// TODO Add type alias/trait: TestCaseCoro = Coroutine<Return = ()>
+
 pub struct TestDriver {
     rng: Rc<RefCell<StdRng>>,
 }
@@ -44,11 +46,13 @@ impl TestDriver {
     }
 }
 
+// TODO drive() takes a coroutine type directly so this trait probably isn't necessary
 pub trait TestCaseGenerator {
     fn make_gen(&self, size: usize, rng: Rc<RefCell<StdRng>>) -> impl Coroutine;
 }
 
 // TODO Confusing mismatch: TestCaseGenerator implemented for a range but generates usizes
+// TODO Instead of impl on a Range, take min and max as either constructor args or fn args.
 impl TestCaseGenerator for Range<usize> {
     fn make_gen(
         &self,
