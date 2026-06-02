@@ -8,36 +8,15 @@ use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 use std::rc::Rc;
 
-// TODO Add type alias/trait: TestCaseCoro = Coroutine<Return = ()>
+pub trait ArbCoro<Y>: Coroutine<Yield = Y, Return = ()> {}
+impl<X, Y> ArbCoro<Y> for X where X: Coroutine<Yield = Y, Return = ()> {}
 
-pub fn drive<Value>(
-    mut test_case_generator: impl Coroutine<Yield = Value, Return = ()> + Unpin,
-    is_test_case_passed: impl Fn(Value) -> bool,
-) -> bool {
-    loop {
-        match Pin::new(&mut test_case_generator).resume(()) {
-            CoroutineState::Yielded(val) => {
-                if !is_test_case_passed(val) {
-                    return false;
-                }
-            }
-            CoroutineState::Complete(()) => return true,
-        }
-    }
+pub trait Arb<Y> {
+    fn arb(&self, rng: Rc<RefCell<StdRng>>, size: usize) -> impl ArbCoro<Y>;
 }
 
-pub trait Arb {
-    fn arb(&self, size: usize, rng: Rc<RefCell<StdRng>>) -> impl Coroutine;
-}
-
-// TODO Confusing mismatch: Arb implemented for a range but generates usizes
-// TODO Instead of impl on a Range, take min and max as either constructor args or fn args.
-impl Arb for Range<usize> {
-    fn arb(
-        &self,
-        num_test_cases: usize,
-        rng: Rc<RefCell<StdRng>>,
-    ) -> impl Coroutine<Yield = usize, Return = ()> {
+impl Arb<usize> for Range<usize> {
+    fn arb(&self, rng: Rc<RefCell<StdRng>>, num_test_cases: usize) -> impl ArbCoro<usize> {
         #[coroutine]
         move || {
             for _ in 0..num_test_cases {
@@ -52,6 +31,22 @@ impl Arb for Range<usize> {
     }
 }
 
+pub fn run<Y>(
+    mut root_arb_coro: impl Coroutine<Yield = Y, Return = ()> + Unpin,
+    test: impl Fn(Y) -> bool,
+) -> bool {
+    loop {
+        match Pin::new(&mut root_arb_coro).resume(()) {
+            CoroutineState::Yielded(val) => {
+                if !test(val) {
+                    return false;
+                }
+            }
+            CoroutineState::Complete(()) => return true,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -61,7 +56,7 @@ mod tests {
     #[test]
     fn frob() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
-        let generator = (0..100).arb(100, rng);
-        drive::<usize>(Box::new(generator), |n| n % 2 == 0 || n % 2 == 1);
+        let arb = (0..100).arb(rng, 100);
+        run(arb, |n| n % 2 == 0 || n % 2 == 1);
     }
 }
