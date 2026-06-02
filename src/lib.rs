@@ -13,35 +13,19 @@ use std::rc::Rc;
 
 // TODO Add type alias/trait: TestCaseCoro = Coroutine<Return = ()>
 
-pub struct TestDriver {
-    rng: Rc<RefCell<StdRng>>,
-}
-
-impl TestDriver {
-    fn from_random_seed() -> Self {
-        let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
-        Self { rng }
-    }
-
-    pub fn from_seed(seed: u64) -> Self {
-        let rng = Rc::new(RefCell::new(StdRng::seed_from_u64(seed)));
-        Self { rng }
-    }
-
-    pub fn drive<C, Value, R, F>(mut test_case_generator: Box<C>, satisfied: F) -> bool
-    where
-        C: Coroutine<Yield = Value, Return = ()> + Unpin,
-        F: Fn(Value) -> bool,
-    {
-        loop {
-            match Pin::new(&mut test_case_generator).resume(()) {
-                CoroutineState::Yielded(val) => {
-                    if !satisfied(val) {
-                        return false;
-                    }
+pub fn drive<C, Value, R, F>(mut test_case_generator: Box<C>, satisfied: F) -> bool
+where
+    C: Coroutine<Yield = Value, Return = ()> + Unpin,
+    F: Fn(Value) -> bool,
+{
+    loop {
+        match Pin::new(&mut test_case_generator).resume(()) {
+            CoroutineState::Yielded(val) => {
+                if !satisfied(val) {
+                    return false;
                 }
-                CoroutineState::Complete(_) => return true,
             }
+            CoroutineState::Complete(_) => return true,
         }
     }
 }
@@ -79,9 +63,9 @@ mod tests {
 
     #[test]
     fn frob() {
+        let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         // TODO Take rng out of TestDriver and ditch TestDriver for simplicity
-        let driver = TestDriver::from_random_seed();
-        let generator = (0..100).make_gen(100, driver.rng);
-        TestDriver::drive::<_, usize, (), _>(Box::new(generator), |n| n % 2 == 0 || n % 2 == 1);
+        let generator = (0..100).make_gen(100, rng);
+        drive::<_, usize, (), _>(Box::new(generator), |n| n % 2 == 0 || n % 2 == 1);
     }
 }
