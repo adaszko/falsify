@@ -117,22 +117,40 @@ pub fn arb_rc<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Rc<T>> {
     }
 }
 
-pub fn run<Y>(
-    mut root_arb_coro: impl ArbCoro<Y> + Unpin,
-    num_tests: usize,
-    test: impl Fn(Y) -> bool,
-) -> bool {
-    for _ in 0..num_tests {
-        match Pin::new(&mut root_arb_coro).resume(()) {
-            CoroutineState::Yielded(val) => {
-                if !test(val) {
-                    return false;
-                }
-            }
-            CoroutineState::Complete(()) => return true,
+pub enum TestResult {
+    Pass,
+    Fail,
+    Reject,
+}
+
+impl From<bool> for TestResult {
+    fn from(cond: bool) -> Self {
+        if cond {
+            TestResult::Pass
+        } else {
+            TestResult::Fail
         }
     }
-    true
+}
+
+pub fn run<Y>(
+    mut root_arb_coro: impl ArbCoro<Y> + Unpin,
+    mut num_tests: usize,
+    test: impl Fn(Y) -> TestResult,
+) {
+    while num_tests > 0 {
+        match Pin::new(&mut root_arb_coro).resume(()) {
+            CoroutineState::Yielded(val) => match test(val) {
+                TestResult::Pass => {
+                    num_tests -= 1;
+                    continue;
+                }
+                TestResult::Reject => continue,
+                TestResult::Fail => panic!(),
+            },
+            CoroutineState::Complete(()) => return,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -145,7 +163,7 @@ mod tests {
     fn frob() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb = arb_usize(rng);
-        run(arb, 100, |n| n % 2 == 0 || n % 2 == 1);
+        run(arb, 100, |n| TestResult::from(n % 2 == 0 || n % 2 == 1));
     }
 
     #[test]
@@ -157,7 +175,7 @@ mod tests {
             let original = v.clone();
             v.reverse();
             v.reverse();
-            v == original
+            TestResult::from(v == original)
         });
     }
 }
