@@ -95,6 +95,28 @@ pub fn arb_vec<T>(
     }
 }
 
+pub fn arb_option<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Option<T>> {
+    #[coroutine]
+    move || {
+        let t = match Pin::new(&mut arb_t).resume(()) {
+            CoroutineState::Yielded(t) => t,
+            CoroutineState::Complete(()) => return (),
+        };
+        yield Some(t);
+    }
+}
+
+pub fn arb_result<T, E>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Result<T, E>> {
+    #[coroutine]
+    move || {
+        let t = match Pin::new(&mut arb_t).resume(()) {
+            CoroutineState::Yielded(t) => t,
+            CoroutineState::Complete(()) => return (),
+        };
+        yield Ok(t);
+    }
+}
+
 pub fn arb_box<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Box<T>> {
     #[coroutine]
     move || {
@@ -133,24 +155,25 @@ impl From<bool> for TestResult {
     }
 }
 
-pub fn run<Y>(
+pub fn run<Y: Clone>(
     mut root_arb_coro: impl ArbCoro<Y> + Unpin,
     mut num_tests: usize,
     test: impl Fn(Y) -> TestResult,
-) {
+) -> Result<(), Y> {
     while num_tests > 0 {
         match Pin::new(&mut root_arb_coro).resume(()) {
-            CoroutineState::Yielded(val) => match test(val) {
+            CoroutineState::Yielded(val) => match test(val.clone()) {
                 TestResult::Pass => {
                     num_tests -= 1;
                     continue;
                 }
                 TestResult::Reject => continue,
-                TestResult::Fail => panic!(),
+                TestResult::Fail => return Err(val),
             },
-            CoroutineState::Complete(()) => return,
+            CoroutineState::Complete(()) => break,
         }
     }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -163,7 +186,7 @@ mod tests {
     fn frob() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb = arb_usize(rng);
-        run(arb, 100, |n| TestResult::from(n % 2 == 0 || n % 2 == 1));
+        run(arb, 100, |n| TestResult::from(n % 2 == 0 || n % 2 == 1)).unwrap();
     }
 
     #[test]
@@ -176,6 +199,7 @@ mod tests {
             v.reverse();
             v.reverse();
             TestResult::from(v == original)
-        });
+        })
+        .unwrap();
     }
 }
