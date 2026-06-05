@@ -39,6 +39,159 @@ pub fn arb_usize(rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<usize> {
     }
 }
 
+pub fn arb_pair<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T)> {
+    #[coroutine]
+    move || {
+        loop {
+            let t0 = match Pin::new(&mut arb_t).resume(()) {
+                CoroutineState::Yielded(t) => t,
+                CoroutineState::Complete(()) => return (),
+            };
+            let t1 = match Pin::new(&mut arb_t).resume(()) {
+                CoroutineState::Yielded(t) => t,
+                CoroutineState::Complete(()) => return (),
+            };
+            yield (t0, t1);
+        }
+    }
+}
+
+pub fn arb_triple<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T, T)> {
+    #[coroutine]
+    move || {
+        loop {
+            let t0 = match Pin::new(&mut arb_t).resume(()) {
+                CoroutineState::Yielded(t) => t,
+                CoroutineState::Complete(()) => return (),
+            };
+            let t1 = match Pin::new(&mut arb_t).resume(()) {
+                CoroutineState::Yielded(t) => t,
+                CoroutineState::Complete(()) => return (),
+            };
+            let t2 = match Pin::new(&mut arb_t).resume(()) {
+                CoroutineState::Yielded(t) => t,
+                CoroutineState::Complete(()) => return (),
+            };
+            yield (t0, t1, t2);
+        }
+    }
+}
+
+pub fn arb_vec<T>(
+    mut arb_t: impl ArbCoro<T> + Unpin,
+    rng: Rc<RefCell<StdRng>>,
+    max_len: usize,
+) -> impl ArbCoro<Vec<T>> {
+    #[coroutine]
+    move || {
+        loop {
+            let len = {
+                let mut r = rng.borrow_mut();
+                r.random_range(0..max_len)
+            };
+            let mut v = Vec::with_capacity(len);
+            for _ in 0..len {
+                let t = match Pin::new(&mut arb_t).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => return (),
+                };
+                v.push(t);
+            }
+            yield v;
+        }
+    }
+}
+
+pub fn arb_option<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Option<T>> {
+    #[coroutine]
+    move || {
+        loop {
+            let t = match Pin::new(&mut arb_t).resume(()) {
+                CoroutineState::Yielded(t) => t,
+                CoroutineState::Complete(()) => return (),
+            };
+            yield Some(t);
+        }
+    }
+}
+
+pub fn arb_result<T, E>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Result<T, E>> {
+    #[coroutine]
+    move || {
+        loop {
+            let t = match Pin::new(&mut arb_t).resume(()) {
+                CoroutineState::Yielded(t) => t,
+                CoroutineState::Complete(()) => return (),
+            };
+            yield Ok(t);
+        }
+    }
+}
+
+pub fn arb_box<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Box<T>> {
+    #[coroutine]
+    move || {
+        loop {
+            let t = match Pin::new(&mut arb_t).resume(()) {
+                CoroutineState::Yielded(t) => t,
+                CoroutineState::Complete(()) => return (),
+            };
+            yield Box::new(t);
+        }
+    }
+}
+
+pub fn arb_rc<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Rc<T>> {
+    #[coroutine]
+    move || {
+        loop {
+            let t = match Pin::new(&mut arb_t).resume(()) {
+                CoroutineState::Yielded(t) => t,
+                CoroutineState::Complete(()) => return (),
+            };
+            yield Rc::new(t);
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum TestResult {
+    Pass,
+    Fail,
+    Reject,
+}
+
+impl From<bool> for TestResult {
+    fn from(cond: bool) -> Self {
+        if cond {
+            TestResult::Pass
+        } else {
+            TestResult::Fail
+        }
+    }
+}
+
+pub fn guess_falsifier<T: Clone>(
+    mut root_arb_coro: impl ArbCoro<T> + Unpin,
+    mut num_tests: usize,
+    test: impl Fn(T) -> TestResult,
+) -> Option<T> {
+    while num_tests > 0 {
+        match Pin::new(&mut root_arb_coro).resume(()) {
+            CoroutineState::Yielded(val) => match test(val.clone()) {
+                TestResult::Pass => {
+                    num_tests -= 1;
+                    continue;
+                }
+                TestResult::Reject => continue,
+                TestResult::Fail => return Some(val),
+            },
+            CoroutineState::Complete(()) => break,
+        }
+    }
+    None
+}
+
 pub fn shrink_usize_binary_search(mut high: usize) -> impl ShrinkCoro<usize> {
     #[coroutine]
     move |_| {
@@ -78,147 +231,6 @@ pub fn shrink_usize_exhaustive(falsifier: usize) -> impl ShrinkCoro<usize> {
     }
 }
 
-pub fn arb_pair<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T)> {
-    #[coroutine]
-    move || {
-        let t0 = match Pin::new(&mut arb_t).resume(()) {
-            CoroutineState::Yielded(t) => t,
-            CoroutineState::Complete(()) => return (),
-        };
-        let t1 = match Pin::new(&mut arb_t).resume(()) {
-            CoroutineState::Yielded(t) => t,
-            CoroutineState::Complete(()) => return (),
-        };
-        yield (t0, t1);
-    }
-}
-
-pub fn arb_triple<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T, T)> {
-    #[coroutine]
-    move || {
-        let t0 = match Pin::new(&mut arb_t).resume(()) {
-            CoroutineState::Yielded(t) => t,
-            CoroutineState::Complete(()) => return (),
-        };
-        let t1 = match Pin::new(&mut arb_t).resume(()) {
-            CoroutineState::Yielded(t) => t,
-            CoroutineState::Complete(()) => return (),
-        };
-        let t2 = match Pin::new(&mut arb_t).resume(()) {
-            CoroutineState::Yielded(t) => t,
-            CoroutineState::Complete(()) => return (),
-        };
-        yield (t0, t1, t2);
-    }
-}
-
-pub fn arb_vec<T>(
-    mut arb_t: impl ArbCoro<T> + Unpin,
-    rng: Rc<RefCell<StdRng>>,
-    max_len: usize,
-) -> impl ArbCoro<Vec<T>> {
-    #[coroutine]
-    move || {
-        loop {
-            let len = {
-                let mut r = rng.borrow_mut();
-                r.random_range(0..max_len)
-            };
-            let mut v = Vec::with_capacity(len);
-            for _ in 0..len {
-                let t = match Pin::new(&mut arb_t).resume(()) {
-                    CoroutineState::Yielded(t) => t,
-                    CoroutineState::Complete(()) => return (),
-                };
-                v.push(t);
-            }
-            yield v;
-        }
-    }
-}
-
-pub fn arb_option<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Option<T>> {
-    #[coroutine]
-    move || {
-        let t = match Pin::new(&mut arb_t).resume(()) {
-            CoroutineState::Yielded(t) => t,
-            CoroutineState::Complete(()) => return (),
-        };
-        yield Some(t);
-    }
-}
-
-pub fn arb_result<T, E>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Result<T, E>> {
-    #[coroutine]
-    move || {
-        let t = match Pin::new(&mut arb_t).resume(()) {
-            CoroutineState::Yielded(t) => t,
-            CoroutineState::Complete(()) => return (),
-        };
-        yield Ok(t);
-    }
-}
-
-pub fn arb_box<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Box<T>> {
-    #[coroutine]
-    move || {
-        let t = match Pin::new(&mut arb_t).resume(()) {
-            CoroutineState::Yielded(t) => t,
-            CoroutineState::Complete(()) => return (),
-        };
-        yield Box::new(t);
-    }
-}
-
-pub fn arb_rc<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Rc<T>> {
-    #[coroutine]
-    move || {
-        let t = match Pin::new(&mut arb_t).resume(()) {
-            CoroutineState::Yielded(t) => t,
-            CoroutineState::Complete(()) => return (),
-        };
-        yield Rc::new(t);
-    }
-}
-
-#[derive(Copy, Clone)]
-pub enum TestResult {
-    Pass,
-    Fail,
-    Reject,
-}
-
-impl From<bool> for TestResult {
-    fn from(cond: bool) -> Self {
-        if cond {
-            TestResult::Pass
-        } else {
-            TestResult::Fail
-        }
-    }
-}
-
-pub fn run<T: Clone>(
-    mut root_arb_coro: impl ArbCoro<T> + Unpin,
-    mut num_tests: usize,
-    test: impl Fn(T) -> TestResult,
-) -> Result<(), T> {
-    while num_tests > 0 {
-        match Pin::new(&mut root_arb_coro).resume(()) {
-            CoroutineState::Yielded(val) => match test(val.clone()) {
-                TestResult::Pass => {
-                    num_tests -= 1;
-                    continue;
-                }
-                TestResult::Reject => continue,
-                TestResult::Fail => return Err(val),
-            },
-            CoroutineState::Complete(()) => break,
-        }
-    }
-    Ok(())
-}
-
 pub fn shrink<T: Clone>(
     mut root_shrink_coro: impl ShrinkCoro<T> + Unpin,
     test: impl Fn(T) -> TestResult,
@@ -238,12 +250,16 @@ mod tests {
     use super::*;
     use rand::SeedableRng;
     use rand::rngs::SysRng;
+    use std::assert_matches;
 
     #[test]
     fn frob() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb = arb_usize(rng);
-        run(arb, 100, |n| TestResult::from(n % 2 == 0 || n % 2 == 1)).unwrap();
+        assert_matches!(
+            guess_falsifier(arb, 100, |n| TestResult::from(n % 2 == 0 || n % 2 == 1)),
+            None
+        );
     }
 
     #[test]
@@ -251,13 +267,15 @@ mod tests {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb_usize = arb_usize(rng.clone());
         let arb_vec = arb_vec(arb_usize, rng, 50);
-        run(arb_vec, 100, |mut v| {
-            let original = v.clone();
-            v.reverse();
-            v.reverse();
-            TestResult::from(v == original)
-        })
-        .unwrap();
+        assert_matches!(
+            guess_falsifier(arb_vec, 100, |mut v| {
+                let original = v.clone();
+                v.reverse();
+                v.reverse();
+                TestResult::from(v == original)
+            }),
+            None
+        );
     }
 
     #[test]
@@ -265,11 +283,9 @@ mod tests {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb = arb_usize(rng);
         let test = |n| TestResult::from(dbg!(n) % 2 == 0);
-        let Err(falsifier) = run(arb, 100, test) else {
-            unreachable!()
+        if let Some(falsifier) = guess_falsifier(arb, 100, test) {
+            let shrink_strategy = shrink_usize_exhaustive(falsifier);
+            shrink(shrink_strategy, test);
         };
-        let shrink_strategy = shrink_usize_exhaustive(falsifier);
-        dbg!(&falsifier);
-        dbg!(shrink(shrink_strategy, test));
     }
 }
