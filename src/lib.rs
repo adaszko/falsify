@@ -186,7 +186,7 @@ pub fn guess_falsifier<T: Clone>(
                 TestResult::Reject => continue,
                 TestResult::Fail => return Some(val),
             },
-            CoroutineState::Complete(()) => break,
+            CoroutineState::Complete(()) => panic!("generator should produce values indefinitely"),
         }
     }
     None
