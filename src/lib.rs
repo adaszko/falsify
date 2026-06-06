@@ -27,7 +27,7 @@ impl From<bool> for TestResult {
     }
 }
 
-pub fn falsify<T: Clone>(
+pub fn falsify_rejectable<T: Clone>(
     test: impl Fn(T) -> TestResult,
     mut root_arb_coro: impl ArbCoro<T> + Unpin,
     mut num_tests: usize,
@@ -48,6 +48,18 @@ pub fn falsify<T: Clone>(
     None
 }
 
+pub fn falsify<T: Clone>(
+    test: impl Fn(T) -> bool,
+    root_arb_coro: impl ArbCoro<T> + Unpin,
+    num_tests: usize,
+) -> Option<T> {
+    falsify_rejectable(
+        |value| TestResult::from(test(value)),
+        root_arb_coro,
+        num_tests,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use crate::shrink::{shrink, shrink_usize_exhaustive};
@@ -64,10 +76,7 @@ mod tests {
     fn test_arb_usize() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb = arb_usize(rng);
-        assert_matches!(
-            falsify(|n| TestResult::from(n % 2 == 0 || n % 2 == 1), arb, 100),
-            None
-        );
+        assert_matches!(falsify(|n| n % 2 == 0 || n % 2 == 1, arb, 100), None);
     }
 
     #[test]
@@ -81,7 +90,7 @@ mod tests {
                     let original = v.clone();
                     v.reverse();
                     v.reverse();
-                    TestResult::from(v == original)
+                    v == original
                 },
                 arb_vec,
                 100,
@@ -94,10 +103,10 @@ mod tests {
     fn test_shrinking() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb = arb_usize(rng);
-        let test = |n| TestResult::from(dbg!(n) % 2 == 0);
+        let test = |n| n % 2 == 0;
         if let Some(falsifier) = falsify(test, arb, 100) {
             let shrink_strategy = shrink_usize_exhaustive(falsifier);
-            shrink(shrink_strategy, test);
+            shrink(test, shrink_strategy);
         };
     }
 }
