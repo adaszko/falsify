@@ -7,10 +7,8 @@ mod shrink;
 pub use arb::*;
 pub use shrink::*;
 
-use std::cell::RefCell;
 use std::ops::CoroutineState;
 use std::pin::Pin;
-use std::rc::Rc;
 
 #[derive(Copy, Clone)]
 pub enum TestResult {
@@ -29,10 +27,10 @@ impl From<bool> for TestResult {
     }
 }
 
-pub fn guess_falsifier<T: Clone>(
+pub fn falsify<T: Clone>(
+    test: impl Fn(T) -> TestResult,
     mut root_arb_coro: impl ArbCoro<T> + Unpin,
     mut num_tests: usize,
-    test: impl Fn(T) -> TestResult,
 ) -> Option<T> {
     while num_tests > 0 {
         match Pin::new(&mut root_arb_coro).resume(()) {
@@ -59,29 +57,35 @@ mod tests {
     use rand::rngs::StdRng;
     use rand::rngs::SysRng;
     use std::assert_matches;
+    use std::cell::RefCell;
+    use std::rc::Rc;
 
     #[test]
-    fn frob() {
+    fn test_arb_usize() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb = arb_usize(rng);
         assert_matches!(
-            guess_falsifier(arb, 100, |n| TestResult::from(n % 2 == 0 || n % 2 == 1)),
+            falsify(|n| TestResult::from(n % 2 == 0 || n % 2 == 1), arb, 100),
             None
         );
     }
 
     #[test]
-    fn frob_vec() {
+    fn test_arb_usize_vec() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb_usize = arb_usize(rng.clone());
         let arb_vec = arb_vec(arb_usize, rng, 50);
         assert_matches!(
-            guess_falsifier(arb_vec, 100, |mut v| {
-                let original = v.clone();
-                v.reverse();
-                v.reverse();
-                TestResult::from(v == original)
-            }),
+            falsify(
+                |mut v| {
+                    let original = v.clone();
+                    v.reverse();
+                    v.reverse();
+                    TestResult::from(v == original)
+                },
+                arb_vec,
+                100,
+            ),
             None
         );
     }
@@ -91,7 +95,7 @@ mod tests {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb = arb_usize(rng);
         let test = |n| TestResult::from(dbg!(n) % 2 == 0);
-        if let Some(falsifier) = guess_falsifier(arb, 100, test) {
+        if let Some(falsifier) = falsify(test, arb, 100) {
             let shrink_strategy = shrink_usize_exhaustive(falsifier);
             shrink(shrink_strategy, test);
         };
