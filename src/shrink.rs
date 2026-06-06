@@ -59,4 +59,3 @@ pub fn shrink<T: Clone>(
         res = test(value.clone());
     }
 }
-
