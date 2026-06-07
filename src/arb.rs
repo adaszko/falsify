@@ -1,6 +1,6 @@
-use std::ops::{Coroutine, CoroutineState};
 use rand::{RngExt, rngs::StdRng};
 use std::cell::RefCell;
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 use std::rc::Rc;
 
@@ -33,7 +33,7 @@ pub fn arb_usize(rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<usize> {
     }
 }
 
-pub fn arb_pair<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T)> {
+pub fn arb_tuple2<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T)> {
     #[coroutine]
     move || {
         loop {
@@ -50,7 +50,7 @@ pub fn arb_pair<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T)> {
     }
 }
 
-pub fn arb_triple<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T, T)> {
+pub fn arb_tuple3<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T, T)> {
     #[coroutine]
     move || {
         loop {
@@ -147,4 +147,3 @@ pub fn arb_rc<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Rc<T>> {
         }
     }
 }
-

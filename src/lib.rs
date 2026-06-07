@@ -79,7 +79,7 @@ mod tests {
     }
 
     #[test]
-    fn test_arb_usize_vec() {
+    fn test_arb_vec_usize() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb_usize = arb_usize(rng.clone());
         let arb_vec = arb_vec(arb_usize, rng, 50);
@@ -99,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn test_shrinking() {
+    fn test_shrink() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb = arb_usize(rng);
         let test = |n| n % 2 == 0;
