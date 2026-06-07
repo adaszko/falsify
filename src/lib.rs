@@ -27,7 +27,7 @@ impl From<bool> for TestResult {
     }
 }
 
-pub fn falsify_rejectable<T: Clone>(
+pub fn falsify_with_rejections<T: Clone>(
     test: impl Fn(T) -> TestResult,
     mut root_arb_coro: impl ArbCoro<T> + Unpin,
     mut num_tests: usize,
@@ -53,7 +53,7 @@ pub fn falsify<T: Clone>(
     root_arb_coro: impl ArbCoro<T> + Unpin,
     num_tests: usize,
 ) -> Option<T> {
-    falsify_rejectable(
+    falsify_with_rejections(
         |value| TestResult::from(test(value)),
         root_arb_coro,
         num_tests,

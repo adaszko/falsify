@@ -45,7 +45,7 @@ pub fn shrink_usize_exhaustive(falsifier: usize) -> impl ShrinkCoro<usize> {
     }
 }
 
-pub fn shrink_rejectable<T: Clone>(
+pub fn shrink_with_rejections<T: Clone>(
     test: impl Fn(T) -> TestResult,
     mut root_shrink_coro: impl ShrinkCoro<T> + Unpin,
 ) -> T {
