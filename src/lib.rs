@@ -66,8 +66,7 @@ mod tests {
 
     use super::*;
     use rand::SeedableRng;
-    use rand::rngs::StdRng;
-    use rand::rngs::SysRng;
+    use rand::rngs::{StdRng, SysRng};
     use std::assert_matches;
     use std::cell::RefCell;
     use std::rc::Rc;
