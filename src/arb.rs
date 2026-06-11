@@ -1,5 +1,6 @@
 use rand::{RngExt, rngs::StdRng};
 use std::cell::RefCell;
+use std::ops::DerefMut;
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 use std::rc::Rc;
@@ -91,6 +92,35 @@ pub fn arb_vec<T>(
                 };
                 v.push(t);
             }
+            yield v;
+        }
+    }
+}
+
+pub fn arb_vec_rc_refcell<T>(
+    arb_t: Rc<RefCell<dyn ArbCoro<T> + Unpin>>,
+    rng: Rc<RefCell<StdRng>>,
+    max_len: usize,
+) -> impl ArbCoro<Vec<T>> {
+    #[coroutine]
+    move || {
+        loop {
+            let v = {
+                let mut inner = arb_t.borrow_mut();
+                let len = {
+                    let mut r = rng.borrow_mut();
+                    r.random_range(0..max_len)
+                };
+                let mut v = Vec::with_capacity(len);
+                for _ in 0..len {
+                    let t = match Pin::new(inner.deref_mut()).resume(()) {
+                        CoroutineState::Yielded(t) => t,
+                        CoroutineState::Complete(()) => return (),
+                    };
+                    v.push(t);
+                }
+                v
+            };
             yield v;
         }
     }
