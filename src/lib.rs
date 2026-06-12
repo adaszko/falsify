@@ -8,6 +8,7 @@ pub use arb::*;
 pub use shrink::*;
 
 use std::ops::CoroutineState;
+use std::panic::{RefUnwindSafe, catch_unwind};
 use std::pin::Pin;
 
 #[derive(Copy, Clone)]
@@ -27,38 +28,31 @@ impl From<bool> for TestResult {
     }
 }
 
-pub fn falsify_with_rejections<T: Clone>(
-    test: impl Fn(T) -> TestResult,
+pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
+    test: impl Fn(T) -> TestResult + RefUnwindSafe,
     mut root_arb_coro: impl ArbCoro<T> + Unpin,
     mut tries: usize,
 ) -> Option<T> {
     while tries > 0 {
-        // TODO Wrap test in catch_unwind()
-        match Pin::new(&mut root_arb_coro).resume(()) {
-            CoroutineState::Yielded(val) => match test(val.clone()) {
-                TestResult::Pass => {
-                    tries -= 1;
-                    continue;
-                }
-                TestResult::Reject => continue,
-                TestResult::Fail => return Some(val),
-            },
+        let value = match Pin::new(&mut root_arb_coro).resume(()) {
+            CoroutineState::Yielded(value) => value,
             CoroutineState::Complete(()) => panic!("generator should produce values indefinitely"),
+        };
+        let result = catch_unwind(|| test(value.clone()));
+        match result {
+            Ok(TestResult::Pass) => {
+                tries -= 1;
+                continue;
+            }
+            Ok(TestResult::Reject) => continue,
+            Ok(TestResult::Fail) | Err(..) => return Some(value),
         }
     }
     None
 }
 
-pub fn falsify_with_tries<T: Clone>(
-    test: impl Fn(T) -> bool,
-    root_arb_coro: impl ArbCoro<T> + Unpin,
-    tries: usize,
-) -> Option<T> {
-    falsify_with_rejections(|value| TestResult::from(test(value)), root_arb_coro, tries)
-}
-
-pub fn falsify<T: Clone>(
-    test: impl Fn(T) -> bool,
+pub fn falsify<T: Clone + RefUnwindSafe>(
+    test: impl Fn(T) -> bool + RefUnwindSafe,
     root_arb_coro: impl ArbCoro<T> + Unpin,
 ) -> Option<T> {
     falsify_with_rejections(|value| TestResult::from(test(value)), root_arb_coro, 100)
@@ -262,15 +256,15 @@ mod tests {
                 let expr_id = match variant_index {
                     0 => match Pin::new(&mut term).resume(()) {
                         CoroutineState::Yielded(child_id) => child_id,
-                        CoroutineState::Complete(()) => return (),
+                        CoroutineState::Complete(()) => return (), // TODO fall back on other variants
                     },
                     1 => match Pin::new(&mut opt).resume(()) {
                         CoroutineState::Yielded(child_id) => child_id,
-                        CoroutineState::Complete(()) => return (),
+                        CoroutineState::Complete(()) => return (), // TODO fall back on other variants
                     },
                     2 => match Pin::new(&mut alt).resume(()) {
                         CoroutineState::Yielded(child_id) => child_id,
-                        CoroutineState::Complete(()) => return (),
+                        CoroutineState::Complete(()) => return (), // TODO fall back on other variants
                     },
                     _ => unreachable!(),
                 };
