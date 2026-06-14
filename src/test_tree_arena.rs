@@ -5,8 +5,9 @@ use rand::distr::{Alphanumeric, SampleString};
 use rand::rngs::{StdRng, SysRng};
 use rand::{RngExt, SeedableRng};
 use std::cell::RefCell;
-use std::ops::DerefMut;
+use std::cmp::max;
 use std::ops::{Coroutine, CoroutineState};
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -207,15 +208,66 @@ fn arb_expr(
     }
 }
 
+fn get_max_tree_width(arena: &[Expr], node_id: ExprId) -> usize {
+    match &arena[node_id] {
+        Expr::Term { .. } => 0,
+        Expr::Opt { child_id } => max(1, get_max_tree_width(arena, *child_id)),
+        Expr::Alt { children_ids } => max(
+            1,
+            children_ids
+                .iter()
+                .map(|id| get_max_tree_width(arena, *id))
+                .max()
+                .unwrap_or(0),
+        ),
+    }
+}
+
+fn get_max_tree_depth(arena: &[Expr], node_id: ExprId) -> usize {
+    match &arena[node_id] {
+        Expr::Term { .. } => 1,
+        Expr::Opt { child_id } => 1 + get_max_tree_depth(arena, *child_id),
+        Expr::Alt { children_ids } => {
+            1 + children_ids
+                .iter()
+                .map(|id| get_max_tree_depth(arena, *id))
+                .max()
+                .unwrap_or(1)
+        }
+    }
+}
+
 #[test]
-fn test_tree_within_limits() {
+fn test_tree_width_within_limits() {
     let arena = Rc::new(RefCell::new(Vec::new()));
     let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
-    let arb = arb_expr(arena, rng, 5, 10);
+    const MAX_WIDTH: usize = 5;
+    const MAX_DEPTH: usize = 10;
+    let a = Rc::clone(&arena);
+    let arb = arb_expr(arena, rng, MAX_WIDTH, MAX_DEPTH);
     if let Some(counterexample) = falsify(
         |t| {
-            dbg!(t);
-            true
+            let a = a.borrow();
+            get_max_tree_width(a.deref(), t) <= MAX_WIDTH
+        },
+        arb,
+    ) {
+        assert!(false, "{}", counterexample);
+    }
+}
+
+#[test]
+fn test_tree_depth_within_limits() {
+    let arena = Rc::new(RefCell::new(Vec::new()));
+    let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
+    const MAX_WIDTH: usize = 5;
+    const MAX_DEPTH: usize = 10;
+    let a = Rc::clone(&arena);
+    let arb = arb_expr(arena, rng, MAX_WIDTH, MAX_DEPTH);
+    if let Some(counterexample) = falsify(
+        |t| {
+            let a = a.borrow();
+            get_max_tree_depth(a.deref(), t) <= MAX_DEPTH
         },
         arb,
     ) {

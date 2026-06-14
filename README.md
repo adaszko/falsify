@@ -3,6 +3,7 @@ Design:
  * It's easy to vary inputs generation strategy between tests.  It's cumbersome with type-based dispatch
  * You can postpone shrinker implementation until it's actually necessary (i.e. a large enough falsifier is found)
  * Go light on macros.  They obscure the testing logic
+ * The crate catches panics by default in order to treat .unwrap()s as test failures
 
 Design assumptions:
  * arb_*() coroutines should generate random values indefinitely and never return...

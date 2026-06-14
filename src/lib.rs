@@ -9,7 +9,7 @@ pub use arb::*;
 pub use shrink::*;
 
 use std::ops::CoroutineState;
-use std::panic::{RefUnwindSafe, catch_unwind};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::pin::Pin;
 
 #[derive(Copy, Clone)]
@@ -29,8 +29,8 @@ impl From<bool> for TestResult {
     }
 }
 
-pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
-    test: impl Fn(T) -> TestResult + RefUnwindSafe,
+pub fn falsify_with_rejections<T: Clone>(
+    test: impl Fn(T) -> TestResult,
     mut root_arb_coro: impl ArbCoro<T> + Unpin,
     mut tries: usize,
 ) -> Option<T> {
@@ -39,7 +39,7 @@ pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
             CoroutineState::Yielded(value) => value,
             CoroutineState::Complete(()) => panic!("generator should produce values indefinitely"),
         };
-        let result = catch_unwind(|| test(value.clone()));
+        let result = catch_unwind(AssertUnwindSafe(|| test(value.clone())));
         match result {
             Ok(TestResult::Pass) => {
                 tries -= 1;
@@ -52,8 +52,8 @@ pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
     None
 }
 
-pub fn falsify<T: Clone + RefUnwindSafe>(
-    test: impl Fn(T) -> bool + RefUnwindSafe,
+pub fn falsify<T: Clone>(
+    test: impl Fn(T) -> bool,
     root_arb_coro: impl ArbCoro<T> + Unpin,
 ) -> Option<T> {
     falsify_with_rejections(|value| TestResult::from(test(value)), root_arb_coro, 100)
