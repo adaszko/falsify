@@ -76,10 +76,10 @@ mod tests {
     }
 
     #[test]
-    fn test_arb_vec_usize() {
+    fn test_arb_vec_of_usize() {
         let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
         let arb_usize = arb_usize(rng.clone());
-        let arb_vec = arb_vec(arb_usize, rng, 50);
+        let arb_vec = arb_vec_of(arb_usize, rng, 50);
         assert_matches!(
             falsify(
                 |mut v| {

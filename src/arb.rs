@@ -34,7 +34,7 @@ pub fn arb_usize(rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<usize> {
     }
 }
 
-pub fn arb_tuple2<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T)> {
+pub fn arb_tuple2_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T)> {
     #[coroutine]
     move || {
         loop {
@@ -51,7 +51,7 @@ pub fn arb_tuple2<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T)>
     }
 }
 
-pub fn arb_tuple3<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T, T)> {
+pub fn arb_tuple3_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T, T)> {
     #[coroutine]
     move || {
         loop {
@@ -72,7 +72,7 @@ pub fn arb_tuple3<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T, 
     }
 }
 
-pub fn arb_vec<T>(
+pub fn arb_vec_of<T>(
     mut arb_t: impl ArbCoro<T> + Unpin,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
@@ -97,7 +97,7 @@ pub fn arb_vec<T>(
     }
 }
 
-pub fn arb_vec_rc_refcell<T>(
+pub fn arb_vec_of_rc_refcell_of<T>(
     arb_t: Rc<RefCell<dyn ArbCoro<T> + Unpin>>,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
@@ -126,7 +126,7 @@ pub fn arb_vec_rc_refcell<T>(
     }
 }
 
-pub fn arb_option<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Option<T>> {
+pub fn arb_option_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Option<T>> {
     #[coroutine]
     move || {
         loop {
@@ -139,7 +139,7 @@ pub fn arb_option<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Option<
     }
 }
 
-pub fn arb_result<T, E>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Result<T, E>> {
+pub fn arb_result_of<T, E>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Result<T, E>> {
     #[coroutine]
     move || {
         loop {
@@ -152,7 +152,7 @@ pub fn arb_result<T, E>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Resu
     }
 }
 
-pub fn arb_box<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Box<T>> {
+pub fn arb_box_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Box<T>> {
     #[coroutine]
     move || {
         loop {
@@ -165,7 +165,7 @@ pub fn arb_box<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Box<T>> {
     }
 }
 
-pub fn arb_rc<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Rc<T>> {
+pub fn arb_rc_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Rc<T>> {
     #[coroutine]
     move || {
         loop {

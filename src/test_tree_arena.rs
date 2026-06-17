@@ -98,7 +98,7 @@ fn arb_alt(
     #[coroutine]
     move || {
         let coro = Rc::clone(&coro_from_depth[remaining_depth - 1]);
-        let mut arb_vec_coro = arb_vec_rc_refcell(coro, Rc::clone(&rng), max_width);
+        let mut arb_vec_coro = arb_vec_of_rc_refcell_of(coro, Rc::clone(&rng), max_width);
         loop {
             let children_ids = match Pin::new(&mut arb_vec_coro).resume(()) {
                 CoroutineState::Yielded(subexpr) => subexpr,
