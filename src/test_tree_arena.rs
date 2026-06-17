@@ -8,6 +8,7 @@ use std::cell::RefCell;
 use std::cmp::max;
 use std::ops::{Coroutine, CoroutineState};
 use std::ops::{Deref, DerefMut};
+use std::panic::AssertUnwindSafe;
 use std::rc::Rc;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -243,7 +244,7 @@ fn test_tree_width_within_limits() {
     let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
     const MAX_WIDTH: usize = 5;
     const MAX_DEPTH: usize = 10;
-    let a = Rc::clone(&arena);
+    let a = AssertUnwindSafe(Rc::clone(&arena));
     let arb = arb_expr(arena, rng, MAX_WIDTH, MAX_DEPTH);
     if let Some(counterexample) = falsify(
         |t| {
@@ -262,7 +263,7 @@ fn test_tree_depth_within_limits() {
     let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
     const MAX_WIDTH: usize = 5;
     const MAX_DEPTH: usize = 10;
-    let a = Rc::clone(&arena);
+    let a = AssertUnwindSafe(Rc::clone(&arena));
     let arb = arb_expr(arena, rng, MAX_WIDTH, MAX_DEPTH);
     if let Some(counterexample) = falsify(
         |t| {
