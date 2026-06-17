@@ -1,9 +1,9 @@
 #![cfg(test)]
 
 use super::*;
+use rand::RngExt;
 use rand::distr::{Alphanumeric, SampleString};
-use rand::rngs::{StdRng, SysRng};
-use rand::{RngExt, SeedableRng};
+use rand::rngs::StdRng;
 use std::cell::RefCell;
 use std::cmp::max;
 use std::ops::{Coroutine, CoroutineState};
@@ -241,7 +241,7 @@ fn get_max_tree_depth(arena: &[Expr], node_id: ExprId) -> usize {
 #[test]
 fn test_tree_width_within_limits() {
     let arena = Rc::new(RefCell::new(Vec::new()));
-    let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
+    let rng = make_rng();
     const MAX_WIDTH: usize = 5;
     const MAX_DEPTH: usize = 10;
     let a = AssertUnwindSafe(Rc::clone(&arena));
@@ -260,7 +260,7 @@ fn test_tree_width_within_limits() {
 #[test]
 fn test_tree_depth_within_limits() {
     let arena = Rc::new(RefCell::new(Vec::new()));
-    let rng = Rc::new(RefCell::new(StdRng::try_from_rng(&mut SysRng).unwrap()));
+    let rng = make_rng();
     const MAX_WIDTH: usize = 5;
     const MAX_DEPTH: usize = 10;
     let a = AssertUnwindSafe(Rc::clone(&arena));
