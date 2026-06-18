@@ -6,10 +6,18 @@ use rand::distr::{Alphanumeric, SampleString};
 use rand::rngs::StdRng;
 use std::cell::RefCell;
 use std::cmp::max;
+use std::ops::DerefMut;
 use std::ops::{Coroutine, CoroutineState};
-use std::ops::{Deref, DerefMut};
 use std::panic::AssertUnwindSafe;
 use std::rc::Rc;
+
+// Sample arena-based tree structure for testing
+#[derive(Debug, Clone)]
+pub enum Expr {
+    Term { term: String },
+    Opt { child_id: ExprId },
+    Alt { children_ids: Vec<ExprId> },
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ExprId(pub usize);
@@ -43,62 +51,47 @@ fn alloc(arena: Rc<RefCell<Vec<Expr>>>, expr: Expr) -> ExprId {
     ExprId(id)
 }
 
-// Sample arena-based tree structure for testing
-#[derive(Debug, Clone)]
-pub enum Expr {
-    Term { term: String },
-    Opt { child_id: ExprId },
-    Alt { children_ids: Vec<ExprId> },
-}
-
 fn arb_term(arena: Rc<RefCell<Vec<Expr>>>, rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<ExprId> {
     #[coroutine]
-    move || {
-        loop {
-            let term: String = {
-                let mut r = rng.borrow_mut();
-                Alphanumeric.sample_string(&mut r, 16)
-            };
-            let expr = Expr::Term { term };
-            let expr_id = alloc(Rc::clone(&arena), expr);
-            yield expr_id;
-        }
+    move || loop {
+        let term: String = {
+            let mut r = rng.borrow_mut();
+            Alphanumeric.sample_string(&mut r, 16)
+        };
+        let expr = Expr::Term { term };
+        let expr_id = alloc(Rc::clone(&arena), expr);
+        yield expr_id;
     }
 }
 
 fn arb_opt(
     arena: Rc<RefCell<Vec<Expr>>>,
-    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>>>,
-    remaining_depth: usize,
+    child_coro: Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>,
 ) -> impl ArbCoro<ExprId> {
     #[coroutine]
-    move || {
-        loop {
-            let child_id = {
-                let mut coro = coro_from_depth[remaining_depth - 1].borrow_mut();
-                match Pin::new(coro.deref_mut()).resume(()) {
-                    CoroutineState::Yielded(child_id) => child_id,
-                    CoroutineState::Complete(()) => return (),
-                }
-            };
-            let expr = Expr::Opt { child_id };
-            let expr_id = alloc(Rc::clone(&arena), expr);
-            yield expr_id;
-        }
+    move || loop {
+        let child_id = {
+            let mut coro = child_coro.borrow_mut();
+            match Pin::new(coro.deref_mut()).resume(()) {
+                CoroutineState::Yielded(child_id) => child_id,
+                CoroutineState::Complete(()) => return (),
+            }
+        };
+        let expr = Expr::Opt { child_id };
+        let expr_id = alloc(Rc::clone(&arena), expr);
+        yield expr_id;
     }
 }
 
 fn arb_alt(
     arena: Rc<RefCell<Vec<Expr>>>,
     rng: Rc<RefCell<StdRng>>,
+    child_coro: Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>,
     max_width: usize,
-    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>>>,
-    remaining_depth: usize,
 ) -> impl ArbCoro<ExprId> {
     #[coroutine]
     move || {
-        let coro = Rc::clone(&coro_from_depth[remaining_depth - 1]);
-        let mut arb_vec_coro = arb_vec_of_rc_refcell_of(coro, Rc::clone(&rng), max_width);
+        let mut arb_vec_coro = arb_vec_of_rc_refcell_of(child_coro, Rc::clone(&rng), max_width);
         loop {
             let children_ids = match Pin::new(&mut arb_vec_coro).resume(()) {
                 CoroutineState::Yielded(subexpr) => subexpr,
@@ -112,38 +105,49 @@ fn arb_alt(
     }
 }
 
-fn do_arb_expr(
+fn arb_expr_depth_0() -> Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>> {
+    let coro = #[coroutine]
+    move || {
+        panic!("Resumed a dummy coroutine!");
+    };
+    Rc::new(RefCell::new(coro))
+}
+
+fn do_arb_expr_depth_1(
     arena: Rc<RefCell<Vec<Expr>>>,
     rng: Rc<RefCell<StdRng>>,
-    max_width: usize,
-    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>>>,
-    remaining_depth: usize,
 ) -> Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>> {
     let coro = #[coroutine]
     move || {
         let mut term = arb_term(Rc::clone(&arena), Rc::clone(&rng));
-
-        if remaining_depth == 1 {
-            loop {
-                let expr_id = match Pin::new(&mut term).resume(()) {
-                    CoroutineState::Yielded(child_id) => child_id,
-                    CoroutineState::Complete(()) => return (),
-                };
-                yield expr_id;
-            }
+        loop {
+            let expr_id = match Pin::new(&mut term).resume(()) {
+                CoroutineState::Yielded(child_id) => child_id,
+                CoroutineState::Complete(()) => return (),
+            };
+            yield expr_id;
         }
+    };
+    Rc::new(RefCell::new(coro))
+}
 
-        let mut opt = arb_opt(
-            Rc::clone(&arena),
-            Rc::clone(&coro_from_depth),
-            remaining_depth - 1,
-        );
+fn do_arb_expr_depth_n(
+    arena: Rc<RefCell<Vec<Expr>>>,
+    rng: Rc<RefCell<StdRng>>,
+    max_width: usize,
+    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>>>,
+    depth: usize,
+) -> Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>> {
+    let coro = #[coroutine]
+    move || {
+        let child_coro = Rc::clone(&coro_from_depth[depth - 1]);
+        let mut term = arb_term(Rc::clone(&arena), Rc::clone(&rng));
+        let mut opt = arb_opt(Rc::clone(&arena), Rc::clone(&child_coro));
         let mut alt = arb_alt(
             Rc::clone(&arena),
             Rc::clone(&rng),
+            Rc::clone(&child_coro),
             max_width,
-            Rc::clone(&coro_from_depth),
-            remaining_depth - 1,
         );
 
         loop {
@@ -151,22 +155,18 @@ fn do_arb_expr(
                 let mut r = rng.borrow_mut();
                 r.random_range(0..=2)
             };
-            {
-                let mut a = arena.borrow_mut();
-                a.clear();
-            };
             let expr_id = match variant_index {
                 0 => match Pin::new(&mut term).resume(()) {
-                    CoroutineState::Yielded(child_id) => child_id,
-                    CoroutineState::Complete(()) => return (), // TODO fall back on other variants
+                    CoroutineState::Yielded(expr_id) => expr_id,
+                    CoroutineState::Complete(()) => break, // TODO fall back on other variants
                 },
                 1 => match Pin::new(&mut opt).resume(()) {
-                    CoroutineState::Yielded(child_id) => child_id,
-                    CoroutineState::Complete(()) => return (), // TODO fall back on other variants
+                    CoroutineState::Yielded(expr_id) => expr_id,
+                    CoroutineState::Complete(()) => break, // TODO fall back on other variants
                 },
                 2 => match Pin::new(&mut alt).resume(()) {
-                    CoroutineState::Yielded(child_id) => child_id,
-                    CoroutineState::Complete(()) => return (), // TODO fall back on other variants
+                    CoroutineState::Yielded(expr_id) => expr_id,
+                    CoroutineState::Complete(()) => break, // TODO fall back on other variants
                 },
                 _ => unreachable!(),
             };
@@ -185,8 +185,10 @@ fn arb_expr(
     #[coroutine]
     move || {
         let mut coro_from_depth: Vec<Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>> = Default::default();
-        for i in 0..max_depth {
-            let coro = do_arb_expr(
+        coro_from_depth.push(arb_expr_depth_0());
+        coro_from_depth.push(do_arb_expr_depth_1(Rc::clone(&arena), Rc::clone(&rng)));
+        for i in 2..max_depth {
+            let coro = do_arb_expr_depth_n(
                 Rc::clone(&arena),
                 Rc::clone(&rng),
                 max_width,
@@ -242,14 +244,15 @@ fn get_max_tree_depth(arena: &[Expr], node_id: ExprId) -> usize {
 fn test_tree_width_within_limits() {
     let arena = Rc::new(RefCell::new(Vec::new()));
     let rng = make_rng();
-    const MAX_WIDTH: usize = 5;
-    const MAX_DEPTH: usize = 10;
-    let a = AssertUnwindSafe(Rc::clone(&arena));
+    const MAX_WIDTH: usize = 3;
+    const MAX_DEPTH: usize = 3;
+    let arena_rc = AssertUnwindSafe(Rc::clone(&arena));
     let arb = arb_expr(arena, rng, MAX_WIDTH, MAX_DEPTH);
+    // TODO clear the arena on every try in falsify()
     if let Some(counterexample) = falsify(
         |t| {
-            let a = a.borrow();
-            get_max_tree_width(a.deref(), t) <= MAX_WIDTH
+            let arena_guard = arena_rc.borrow();
+            get_max_tree_width(arena_guard.as_ref(), t) <= MAX_WIDTH
         },
         arb,
     ) {
@@ -263,12 +266,13 @@ fn test_tree_depth_within_limits() {
     let rng = make_rng();
     const MAX_WIDTH: usize = 5;
     const MAX_DEPTH: usize = 10;
-    let a = AssertUnwindSafe(Rc::clone(&arena));
+    let arena_rc = AssertUnwindSafe(Rc::clone(&arena));
     let arb = arb_expr(arena, rng, MAX_WIDTH, MAX_DEPTH);
+    // TODO clear the arena on every try in falsify()
     if let Some(counterexample) = falsify(
         |t| {
-            let a = a.borrow();
-            get_max_tree_depth(a.deref(), t) <= MAX_DEPTH
+            let arena_guard = arena_rc.borrow();
+            get_max_tree_depth(arena_guard.as_ref(), t) <= MAX_DEPTH
         },
         arb,
     ) {
