@@ -12,9 +12,16 @@ use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Term { term: String },
-    Opt { child: Rc<Expr> },
-    Alt { children: Vec<Rc<Expr>> },
+    Term {
+        #[allow(dead_code)]
+        term: String,
+    },
+    Opt {
+        child: Rc<Expr>,
+    },
+    Alt {
+        children: Vec<Rc<Expr>>,
+    },
 }
 
 fn arb_term(rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<Rc<Expr>> {
