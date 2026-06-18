@@ -12,10 +12,13 @@ use rand::{SeedableRng, TryRng};
 pub use shrink::*;
 
 use std::cell::RefCell;
+use std::env;
 use std::ops::CoroutineState;
 use std::panic::{RefUnwindSafe, catch_unwind};
 use std::pin::Pin;
 use std::rc::Rc;
+
+static SEED_ENV_VAR: &str = "GENTEST_SEED";
 
 #[derive(Copy, Clone)]
 pub enum TestResult {
@@ -57,15 +60,25 @@ pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
     None
 }
 
+/// Takes the seed value from the GENTEST_SEED environment variable, if set.
 pub fn make_rng() -> Rc<RefCell<StdRng>> {
     let mut std_rng: StdRng = rand::make_rng();
-    let seed = std_rng.try_next_u64().unwrap();
-    dbg!(seed);
+    let seed: u64 = if let Ok(seed_string) = env::var(SEED_ENV_VAR) {
+        if let Ok(seed) = seed_string.parse() {
+            seed
+        } else {
+            panic!("Unable to parse {seed_string:?} as seed!");
+        }
+    } else {
+        std_rng.try_next_u64().unwrap()
+    };
+    eprintln!("Seed: {seed}");
     let seeded_std_rng = StdRng::seed_from_u64(seed);
     Rc::new(RefCell::new(seeded_std_rng))
 }
 
-pub fn make_seeded_rng(seed: u64) -> Rc<RefCell<StdRng>> {
+pub fn make_rng_with_seed(seed: u64) -> Rc<RefCell<StdRng>> {
+    eprintln!("Seed: {seed}");
     let seeded_std_rng = StdRng::seed_from_u64(seed);
     Rc::new(RefCell::new(seeded_std_rng))
 }
