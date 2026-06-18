@@ -4,6 +4,7 @@
 mod arb;
 mod shrink;
 mod test_tree_arena;
+mod test_tree_refs;
 
 pub use arb::*;
 use rand::rngs::StdRng;
