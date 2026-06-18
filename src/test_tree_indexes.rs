@@ -44,7 +44,7 @@ fn alloc(arena: Rc<RefCell<Vec<Expr>>>, expr: Expr) -> ExprId {
 }
 
 // Sample arena-based tree structure for testing
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Term { term: String },
     Opt { child_id: ExprId },
