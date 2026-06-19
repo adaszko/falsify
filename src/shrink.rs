@@ -7,30 +7,6 @@ use crate::TestResult;
 pub trait ShrinkCoro<Y>: Coroutine<TestResult, Yield = Y, Return = Y> {}
 impl<X, Y> ShrinkCoro<Y> for X where X: Coroutine<TestResult, Yield = Y, Return = Y> {}
 
-pub fn shrink_with_rejections<T: Clone + RefUnwindSafe>(
-    test: impl Fn(T) -> TestResult + RefUnwindSafe,
-    mut root_shrink_coro: impl ShrinkCoro<T> + Unpin,
-) -> T {
-    let mut result = TestResult::Fail;
-    loop {
-        let value = match Pin::new(&mut root_shrink_coro).resume(result) {
-            CoroutineState::Yielded(value) => value,
-            CoroutineState::Complete(falsifier) => return falsifier,
-        };
-        result = match catch_unwind(|| test(value.clone())) {
-            Ok(r) => r,
-            Err(..) => TestResult::Fail,
-        }
-    }
-}
-
-pub fn shrink<T: Clone + RefUnwindSafe>(
-    test: impl Fn(T) -> bool + RefUnwindSafe,
-    root_shrink_coro: impl ShrinkCoro<T> + Unpin,
-) -> T {
-    shrink_with_rejections(|value| TestResult::from(test(value)), root_shrink_coro)
-}
-
 pub fn shrink_usize_binary_search(mut high: usize) -> impl ShrinkCoro<usize> {
     #[coroutine]
     move |_| {
@@ -89,6 +65,30 @@ pub fn shrink_vec_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCoro<V
         }
         high
     }
+}
+
+pub fn shrink_with_rejections<T: Clone + RefUnwindSafe>(
+    test: impl Fn(T) -> TestResult + RefUnwindSafe,
+    mut root_shrink_coro: impl ShrinkCoro<T> + Unpin,
+) -> T {
+    let mut result = TestResult::Fail;
+    loop {
+        let value = match Pin::new(&mut root_shrink_coro).resume(result) {
+            CoroutineState::Yielded(value) => value,
+            CoroutineState::Complete(falsifier) => return falsifier,
+        };
+        result = match catch_unwind(|| test(value.clone())) {
+            Ok(r) => r,
+            Err(..) => TestResult::Fail,
+        }
+    }
+}
+
+pub fn shrink<T: Clone + RefUnwindSafe>(
+    test: impl Fn(T) -> bool + RefUnwindSafe,
+    root_shrink_coro: impl ShrinkCoro<T> + Unpin,
+) -> T {
+    shrink_with_rejections(|value| TestResult::from(test(value)), root_shrink_coro)
 }
 
 #[cfg(test)]
