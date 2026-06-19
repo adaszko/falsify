@@ -37,29 +37,6 @@ impl From<bool> for TestResult {
     }
 }
 
-pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
-    test: impl Fn(T) -> TestResult + RefUnwindSafe,
-    mut arb_t: impl ArbCoro<T> + Unpin,
-    mut tries: usize,
-) -> Option<T> {
-    while tries > 0 {
-        let value = match Pin::new(&mut arb_t).resume(()) {
-            CoroutineState::Yielded(value) => value,
-            CoroutineState::Complete(()) => panic!("generator should produce values indefinitely"),
-        };
-        let result = catch_unwind(|| test(value.clone()));
-        match result {
-            Ok(TestResult::Pass) => {
-                tries -= 1;
-                continue;
-            }
-            Ok(TestResult::Reject) => continue,
-            Ok(TestResult::Fail) | Err(..) => return Some(value),
-        }
-    }
-    None
-}
-
 /// Takes the seed value from the GENTEST_SEED environment variable, if set.
 pub fn make_rng() -> Rc<RefCell<StdRng>> {
     let mut std_rng: StdRng = rand::make_rng();
@@ -81,6 +58,44 @@ pub fn make_rng_with_seed(seed: u64) -> Rc<RefCell<StdRng>> {
     eprintln!("Seed: {seed}");
     let seeded_std_rng = StdRng::seed_from_u64(seed);
     Rc::new(RefCell::new(seeded_std_rng))
+}
+
+pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
+    test: impl Fn(T) -> TestResult + RefUnwindSafe,
+    mut arb_t: impl ArbCoro<T> + Unpin,
+    mut tries: usize,
+) -> Option<T> {
+    while tries > 0 {
+        let value = match Pin::new(&mut arb_t).resume(()) {
+            CoroutineState::Yielded(value) => value,
+            CoroutineState::Complete(()) => {
+                if tries > 0 {
+                    panic!(
+                        "Test generator finished prematurely before producing {tries} test cases!"
+                    );
+                }
+                return None;
+            }
+        };
+        let result = catch_unwind(|| test(value.clone()));
+        match result {
+            Ok(TestResult::Pass) => {
+                tries -= 1;
+                continue;
+            }
+            Ok(TestResult::Reject) => continue,
+            Ok(TestResult::Fail) | Err(..) => return Some(value),
+        }
+    }
+    None
+}
+
+pub fn falsify_times<T: Clone + RefUnwindSafe>(
+    test: impl Fn(T) -> bool + RefUnwindSafe,
+    arb_t: impl ArbCoro<T> + Unpin,
+    tries: usize,
+) -> Option<T> {
+    falsify_with_rejections(|value| TestResult::from(test(value)), arb_t, tries)
 }
 
 pub fn falsify<T: Clone + RefUnwindSafe>(
