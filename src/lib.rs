@@ -137,13 +137,14 @@ mod tests {
     }
 
     #[test]
-    fn test_shrink() {
+    fn test_falsify_then_shrink() {
         let rng = make_rng();
         let arb = arb_usize(rng);
         let test = |n| n % 2 == 0;
         if let Some(falsifier) = falsify(test, arb) {
             let shrink_strategy = shrink_usize_exhaustive(falsifier);
-            shrink(test, shrink_strategy);
+            let smallest = shrink(test, shrink_strategy);
+            assert_eq!(smallest, 1);
         };
     }
 }
