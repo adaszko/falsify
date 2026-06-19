@@ -24,7 +24,7 @@ pub enum Expr {
     },
 }
 
-fn arb_term(rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<Rc<Expr>> {
+fn arb_term(rng: Rc<RefCell<StdRng>>) -> impl ArbGen<Rc<Expr>> {
     #[coroutine]
     move || {
         loop {
@@ -39,9 +39,9 @@ fn arb_term(rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<Rc<Expr>> {
 }
 
 fn arb_opt(
-    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbCoro<Rc<Expr>> + Unpin>>>>,
+    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>>>,
     remaining_depth: usize,
-) -> impl ArbCoro<Rc<Expr>> {
+) -> impl ArbGen<Rc<Expr>> {
     #[coroutine]
     move || {
         loop {
@@ -61,9 +61,9 @@ fn arb_opt(
 fn arb_alt(
     rng: Rc<RefCell<StdRng>>,
     max_width: usize,
-    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbCoro<Rc<Expr>> + Unpin>>>>,
+    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>>>,
     remaining_depth: usize,
-) -> impl ArbCoro<Rc<Expr>> {
+) -> impl ArbGen<Rc<Expr>> {
     #[coroutine]
     move || {
         let coro = Rc::clone(&coro_from_depth[remaining_depth - 1]);
@@ -83,9 +83,9 @@ fn arb_alt(
 fn do_arb_expr(
     rng: Rc<RefCell<StdRng>>,
     max_width: usize,
-    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbCoro<Rc<Expr>> + Unpin>>>>,
+    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>>>,
     remaining_depth: usize,
-) -> Rc<RefCell<dyn ArbCoro<Rc<Expr>> + Unpin>> {
+) -> Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>> {
     let coro = #[coroutine]
     move || {
         let mut term = arb_term(Rc::clone(&rng));
@@ -148,10 +148,10 @@ fn arb_expr(
     rng: Rc<RefCell<StdRng>>,
     max_width: usize,
     max_depth: usize,
-) -> impl ArbCoro<Rc<Expr>> + Unpin {
+) -> impl ArbGen<Rc<Expr>> + Unpin {
     #[coroutine]
     move || {
-        let mut coro_from_depth: Vec<Rc<RefCell<dyn ArbCoro<Rc<Expr>> + Unpin>>> =
+        let mut coro_from_depth: Vec<Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>> =
             Default::default();
         for i in 0..max_depth {
             let coro = do_arb_expr(

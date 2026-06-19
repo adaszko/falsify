@@ -7,10 +7,10 @@ use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 use std::rc::Rc;
 
-pub trait ArbCoro<Y>: Coroutine<Yield = Y, Return = ()> {}
-impl<X, Y> ArbCoro<Y> for X where X: Coroutine<Yield = Y, Return = ()> {}
+pub trait ArbGen<Y>: Coroutine<Yield = Y, Return = ()> {}
+impl<X, Y> ArbGen<Y> for X where X: Coroutine<Yield = Y, Return = ()> {}
 
-pub fn arb_bool(rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<bool> {
+pub fn arb_bool(rng: Rc<RefCell<StdRng>>) -> impl ArbGen<bool> {
     #[coroutine]
     move || {
         loop {
@@ -23,7 +23,7 @@ pub fn arb_bool(rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<bool> {
     }
 }
 
-pub fn arb_usize(rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<usize> {
+pub fn arb_usize(rng: Rc<RefCell<StdRng>>) -> impl ArbGen<usize> {
     #[coroutine]
     move || {
         loop {
@@ -36,7 +36,7 @@ pub fn arb_usize(rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<usize> {
     }
 }
 
-pub fn arb_tuple2_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T)> {
+pub fn arb_tuple2_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<(T, T)> {
     #[coroutine]
     move || {
         loop {
@@ -53,7 +53,7 @@ pub fn arb_tuple2_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, 
     }
 }
 
-pub fn arb_tuple3_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, T, T)> {
+pub fn arb_tuple3_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<(T, T, T)> {
     #[coroutine]
     move || {
         loop {
@@ -75,10 +75,10 @@ pub fn arb_tuple3_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<(T, 
 }
 
 pub fn arb_vec_of<T>(
-    mut arb_t: impl ArbCoro<T> + Unpin,
+    mut arb_t: impl ArbGen<T> + Unpin,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
-) -> impl ArbCoro<Vec<T>> {
+) -> impl ArbGen<Vec<T>> {
     #[coroutine]
     move || {
         loop {
@@ -103,10 +103,10 @@ pub fn arb_vec_of<T>(
 }
 
 pub fn arb_vec_deque_of<T>(
-    mut arb_t: impl ArbCoro<T> + Unpin,
+    mut arb_t: impl ArbGen<T> + Unpin,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
-) -> impl ArbCoro<VecDeque<T>> {
+) -> impl ArbGen<VecDeque<T>> {
     #[coroutine]
     move || {
         loop {
@@ -139,10 +139,10 @@ pub fn arb_vec_deque_of<T>(
 }
 
 pub fn arb_binary_heap_of<T: Ord>(
-    mut arb_t: impl ArbCoro<T> + Unpin,
+    mut arb_t: impl ArbGen<T> + Unpin,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
-) -> impl ArbCoro<BinaryHeap<T>> {
+) -> impl ArbGen<BinaryHeap<T>> {
     #[coroutine]
     move || {
         loop {
@@ -167,10 +167,10 @@ pub fn arb_binary_heap_of<T: Ord>(
 }
 
 pub fn arb_linked_list_of<T: Ord>(
-    mut arb_t: impl ArbCoro<T> + Unpin,
+    mut arb_t: impl ArbGen<T> + Unpin,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
-) -> impl ArbCoro<LinkedList<T>> {
+) -> impl ArbGen<LinkedList<T>> {
     #[coroutine]
     move || {
         loop {
@@ -203,10 +203,10 @@ pub fn arb_linked_list_of<T: Ord>(
 }
 
 pub fn arb_hashset_of<T: Hash + Eq>(
-    mut arb_t: impl ArbCoro<T> + Unpin,
+    mut arb_t: impl ArbGen<T> + Unpin,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
-) -> impl ArbCoro<HashSet<T>> {
+) -> impl ArbGen<HashSet<T>> {
     #[coroutine]
     move || {
         loop {
@@ -231,10 +231,10 @@ pub fn arb_hashset_of<T: Hash + Eq>(
 }
 
 pub fn arb_btreeset_of<T: Ord>(
-    mut arb_t: impl ArbCoro<T> + Unpin,
+    mut arb_t: impl ArbGen<T> + Unpin,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
-) -> impl ArbCoro<BTreeSet<T>> {
+) -> impl ArbGen<BTreeSet<T>> {
     #[coroutine]
     move || {
         loop {
@@ -259,11 +259,11 @@ pub fn arb_btreeset_of<T: Ord>(
 }
 
 pub fn arb_hashmap_of<K: Eq + Hash, V>(
-    mut arb_key: impl ArbCoro<K> + Unpin,
-    mut arb_val: impl ArbCoro<V> + Unpin,
+    mut arb_key: impl ArbGen<K> + Unpin,
+    mut arb_val: impl ArbGen<V> + Unpin,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
-) -> impl ArbCoro<HashMap<K, V>> {
+) -> impl ArbGen<HashMap<K, V>> {
     #[coroutine]
     move || {
         loop {
@@ -295,11 +295,11 @@ pub fn arb_hashmap_of<K: Eq + Hash, V>(
 }
 
 pub fn arb_btreemap_of<K: Ord, V>(
-    mut arb_key: impl ArbCoro<K> + Unpin,
-    mut arb_val: impl ArbCoro<V> + Unpin,
+    mut arb_key: impl ArbGen<K> + Unpin,
+    mut arb_val: impl ArbGen<V> + Unpin,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
-) -> impl ArbCoro<BTreeMap<K, V>> {
+) -> impl ArbGen<BTreeMap<K, V>> {
     #[coroutine]
     move || {
         loop {
@@ -331,10 +331,10 @@ pub fn arb_btreemap_of<K: Ord, V>(
 }
 
 pub fn arb_vec_of_rc_refcell_of<T>(
-    arb_t: Rc<RefCell<dyn ArbCoro<T> + Unpin>>,
+    arb_t: Rc<RefCell<dyn ArbGen<T> + Unpin>>,
     rng: Rc<RefCell<StdRng>>,
     max_len: usize,
-) -> impl ArbCoro<Vec<T>> {
+) -> impl ArbGen<Vec<T>> {
     #[coroutine]
     move || {
         loop {
@@ -359,7 +359,7 @@ pub fn arb_vec_of_rc_refcell_of<T>(
     }
 }
 
-pub fn arb_option_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Option<T>> {
+pub fn arb_option_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Option<T>> {
     #[coroutine]
     move || {
         loop {
@@ -372,7 +372,7 @@ pub fn arb_option_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Opti
     }
 }
 
-pub fn arb_result_of<T, E>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Result<T, E>> {
+pub fn arb_result_of<T, E>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Result<T, E>> {
     #[coroutine]
     move || {
         loop {
@@ -385,7 +385,7 @@ pub fn arb_result_of<T, E>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<R
     }
 }
 
-pub fn arb_box_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Box<T>> {
+pub fn arb_box_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Box<T>> {
     #[coroutine]
     move || {
         loop {
@@ -398,7 +398,7 @@ pub fn arb_box_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Box<T>>
     }
 }
 
-pub fn arb_rc_of<T>(mut arb_t: impl ArbCoro<T> + Unpin) -> impl ArbCoro<Rc<T>> {
+pub fn arb_rc_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Rc<T>> {
     #[coroutine]
     move || {
         loop {

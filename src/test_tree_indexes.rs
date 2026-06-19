@@ -51,7 +51,7 @@ fn alloc(arena: Rc<RefCell<Vec<Expr>>>, expr: Expr) -> ExprId {
     ExprId(id)
 }
 
-fn arb_term(arena: Rc<RefCell<Vec<Expr>>>, rng: Rc<RefCell<StdRng>>) -> impl ArbCoro<ExprId> {
+fn arb_term(arena: Rc<RefCell<Vec<Expr>>>, rng: Rc<RefCell<StdRng>>) -> impl ArbGen<ExprId> {
     #[coroutine]
     move || loop {
         let term: String = {
@@ -66,8 +66,8 @@ fn arb_term(arena: Rc<RefCell<Vec<Expr>>>, rng: Rc<RefCell<StdRng>>) -> impl Arb
 
 fn arb_opt(
     arena: Rc<RefCell<Vec<Expr>>>,
-    child_coro: Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>,
-) -> impl ArbCoro<ExprId> {
+    child_coro: Rc<RefCell<dyn ArbGen<ExprId> + Unpin>>,
+) -> impl ArbGen<ExprId> {
     #[coroutine]
     move || loop {
         let child_id = {
@@ -86,9 +86,9 @@ fn arb_opt(
 fn arb_alt(
     arena: Rc<RefCell<Vec<Expr>>>,
     rng: Rc<RefCell<StdRng>>,
-    child_coro: Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>,
+    child_coro: Rc<RefCell<dyn ArbGen<ExprId> + Unpin>>,
     max_width: usize,
-) -> impl ArbCoro<ExprId> {
+) -> impl ArbGen<ExprId> {
     #[coroutine]
     move || {
         let mut arb_vec_coro = arb_vec_of_rc_refcell_of(child_coro, Rc::clone(&rng), max_width);
@@ -105,7 +105,7 @@ fn arb_alt(
     }
 }
 
-fn arb_expr_depth_0() -> Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>> {
+fn arb_expr_depth_0() -> Rc<RefCell<dyn ArbGen<ExprId> + Unpin>> {
     let coro = #[coroutine]
     move || {
         panic!("Resumed a dummy coroutine!");
@@ -116,7 +116,7 @@ fn arb_expr_depth_0() -> Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>> {
 fn do_arb_expr_depth_1(
     arena: Rc<RefCell<Vec<Expr>>>,
     rng: Rc<RefCell<StdRng>>,
-) -> Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>> {
+) -> Rc<RefCell<dyn ArbGen<ExprId> + Unpin>> {
     let coro = #[coroutine]
     move || {
         let mut term = arb_term(Rc::clone(&arena), Rc::clone(&rng));
@@ -135,8 +135,8 @@ fn do_arb_expr_depth_n(
     arena: Rc<RefCell<Vec<Expr>>>,
     rng: Rc<RefCell<StdRng>>,
     max_width: usize,
-    child_coro: Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>,
-) -> Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>> {
+    child_coro: Rc<RefCell<dyn ArbGen<ExprId> + Unpin>>,
+) -> Rc<RefCell<dyn ArbGen<ExprId> + Unpin>> {
     let coro = #[coroutine]
     move || {
         let mut term = arb_term(Rc::clone(&arena), Rc::clone(&rng));
@@ -189,10 +189,10 @@ fn arb_expr(
     rng: Rc<RefCell<StdRng>>,
     max_width: usize,
     max_depth: usize,
-) -> impl ArbCoro<ExprId> + Unpin {
+) -> impl ArbGen<ExprId> + Unpin {
     #[coroutine]
     move || {
-        let mut coro_from_depth: Vec<Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>> = Default::default();
+        let mut coro_from_depth: Vec<Rc<RefCell<dyn ArbGen<ExprId> + Unpin>>> = Default::default();
         coro_from_depth.push(arb_expr_depth_0());
         coro_from_depth.push(do_arb_expr_depth_1(Rc::clone(&arena), Rc::clone(&rng)));
         for i in 2..max_depth {

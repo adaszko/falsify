@@ -62,7 +62,7 @@ pub fn make_rng_with_seed(seed: u64) -> Rc<RefCell<StdRng>> {
 
 pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
     test: impl Fn(T) -> TestResult + RefUnwindSafe,
-    mut arb_t: impl ArbCoro<T> + Unpin,
+    mut arb_t: impl ArbGen<T> + Unpin,
     mut tries: usize,
     reset: impl Fn(),
 ) -> Option<T> {
@@ -97,7 +97,7 @@ pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
 
 pub fn falsify_times<T: Clone + RefUnwindSafe>(
     test: impl Fn(T) -> bool + RefUnwindSafe,
-    arb_t: impl ArbCoro<T> + Unpin,
+    arb_t: impl ArbGen<T> + Unpin,
     tries: usize,
 ) -> Option<T> {
     falsify_with_rejections(|value| TestResult::from(test(value)), arb_t, tries, || {})
@@ -105,7 +105,7 @@ pub fn falsify_times<T: Clone + RefUnwindSafe>(
 
 pub fn falsify<T: Clone + RefUnwindSafe>(
     test: impl Fn(T) -> bool + RefUnwindSafe,
-    arb_t: impl ArbCoro<T> + Unpin,
+    arb_t: impl ArbGen<T> + Unpin,
 ) -> Option<T> {
     falsify_with_rejections(|value| TestResult::from(test(value)), arb_t, 100, || {})
 }
@@ -113,7 +113,7 @@ pub fn falsify<T: Clone + RefUnwindSafe>(
 pub fn falsify_reset<T: Clone + RefUnwindSafe>(
     test: impl Fn(T) -> bool + RefUnwindSafe,
     reset: impl Fn(),
-    arb_t: impl ArbCoro<T> + Unpin,
+    arb_t: impl ArbGen<T> + Unpin,
 ) -> Option<T> {
     falsify_with_rejections(|value| TestResult::from(test(value)), arb_t, 100, reset)
 }
