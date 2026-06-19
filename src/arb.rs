@@ -1,6 +1,6 @@
 use rand::{RngExt, rngs::StdRng};
 use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 use std::hash::Hash;
 use std::ops::DerefMut;
 use std::ops::{Coroutine, CoroutineState};
@@ -98,6 +98,106 @@ pub fn arb_vec_of<T>(
                 v.push(t);
             }
             yield v;
+        }
+    }
+}
+
+pub fn arb_vec_deque_of<T>(
+    mut arb_t: impl ArbCoro<T> + Unpin,
+    rng: Rc<RefCell<StdRng>>,
+    max_len: usize,
+) -> impl ArbCoro<VecDeque<T>> {
+    #[coroutine]
+    move || {
+        loop {
+            let len = {
+                let mut r = rng.borrow_mut();
+                r.random_range(0..max_len)
+            };
+            let mut q = VecDeque::with_capacity(len);
+            for _ in 0..len {
+                let t = match Pin::new(&mut arb_t).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => {
+                        yield q;
+                        return ();
+                    }
+                };
+                let direction: bool = {
+                    let mut r = rng.borrow_mut();
+                    r.random()
+                };
+                if direction {
+                    q.push_back(t);
+                } else {
+                    q.push_front(t);
+                }
+            }
+            yield q;
+        }
+    }
+}
+
+pub fn arb_binary_heap_of<T: Ord>(
+    mut arb_t: impl ArbCoro<T> + Unpin,
+    rng: Rc<RefCell<StdRng>>,
+    max_len: usize,
+) -> impl ArbCoro<BinaryHeap<T>> {
+    #[coroutine]
+    move || {
+        loop {
+            let len = {
+                let mut r = rng.borrow_mut();
+                r.random_range(0..max_len)
+            };
+            let mut h = BinaryHeap::with_capacity(len);
+            for _ in 0..len {
+                let t = match Pin::new(&mut arb_t).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => {
+                        yield h;
+                        return ();
+                    }
+                };
+                h.push(t);
+            }
+            yield h;
+        }
+    }
+}
+
+pub fn arb_linked_list_of<T: Ord>(
+    mut arb_t: impl ArbCoro<T> + Unpin,
+    rng: Rc<RefCell<StdRng>>,
+    max_len: usize,
+) -> impl ArbCoro<LinkedList<T>> {
+    #[coroutine]
+    move || {
+        loop {
+            let len = {
+                let mut r = rng.borrow_mut();
+                r.random_range(0..max_len)
+            };
+            let mut l = LinkedList::new();
+            for _ in 0..len {
+                let t = match Pin::new(&mut arb_t).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => {
+                        yield l;
+                        return ();
+                    }
+                };
+                let direction: bool = {
+                    let mut r = rng.borrow_mut();
+                    r.random()
+                };
+                if direction {
+                    l.push_back(t);
+                } else {
+                    l.push_front(t);
+                }
+            }
+            yield l;
         }
     }
 }
