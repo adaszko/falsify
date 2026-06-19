@@ -1,5 +1,7 @@
 use rand::{RngExt, rngs::StdRng};
 use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::hash::Hash;
 use std::ops::DerefMut;
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
@@ -88,11 +90,142 @@ pub fn arb_vec_of<T>(
             for _ in 0..len {
                 let t = match Pin::new(&mut arb_t).resume(()) {
                     CoroutineState::Yielded(t) => t,
-                    CoroutineState::Complete(()) => return (),
+                    CoroutineState::Complete(()) => {
+                        yield v;
+                        return ();
+                    }
                 };
                 v.push(t);
             }
             yield v;
+        }
+    }
+}
+
+pub fn arb_hashset_of<T: Hash + Eq>(
+    mut arb_t: impl ArbCoro<T> + Unpin,
+    rng: Rc<RefCell<StdRng>>,
+    max_len: usize,
+) -> impl ArbCoro<HashSet<T>> {
+    #[coroutine]
+    move || {
+        loop {
+            let len = {
+                let mut r = rng.borrow_mut();
+                r.random_range(0..max_len)
+            };
+            let mut set = HashSet::with_capacity(len);
+            for _ in 0..len {
+                let t = match Pin::new(&mut arb_t).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => {
+                        yield set;
+                        return ();
+                    }
+                };
+                set.insert(t);
+            }
+            yield set;
+        }
+    }
+}
+
+pub fn arb_btreeset_of<T: Ord>(
+    mut arb_t: impl ArbCoro<T> + Unpin,
+    rng: Rc<RefCell<StdRng>>,
+    max_len: usize,
+) -> impl ArbCoro<BTreeSet<T>> {
+    #[coroutine]
+    move || {
+        loop {
+            let len = {
+                let mut r = rng.borrow_mut();
+                r.random_range(0..max_len)
+            };
+            let mut set = BTreeSet::new();
+            for _ in 0..len {
+                let t = match Pin::new(&mut arb_t).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => {
+                        yield set;
+                        return ();
+                    }
+                };
+                set.insert(t);
+            }
+            yield set;
+        }
+    }
+}
+
+pub fn arb_hashmap_of<K: Eq + Hash, V>(
+    mut arb_key: impl ArbCoro<K> + Unpin,
+    mut arb_val: impl ArbCoro<V> + Unpin,
+    rng: Rc<RefCell<StdRng>>,
+    max_len: usize,
+) -> impl ArbCoro<HashMap<K, V>> {
+    #[coroutine]
+    move || {
+        loop {
+            let len = {
+                let mut r = rng.borrow_mut();
+                r.random_range(0..max_len)
+            };
+            let mut map = HashMap::with_capacity(len);
+            for _ in 0..len {
+                let k = match Pin::new(&mut arb_key).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => {
+                        yield map;
+                        return ();
+                    }
+                };
+                let v = match Pin::new(&mut arb_val).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => {
+                        yield map;
+                        return ();
+                    }
+                };
+                map.insert(k, v);
+            }
+            yield map;
+        }
+    }
+}
+
+pub fn arb_btreemap_of<K: Ord, V>(
+    mut arb_key: impl ArbCoro<K> + Unpin,
+    mut arb_val: impl ArbCoro<V> + Unpin,
+    rng: Rc<RefCell<StdRng>>,
+    max_len: usize,
+) -> impl ArbCoro<BTreeMap<K, V>> {
+    #[coroutine]
+    move || {
+        loop {
+            let len = {
+                let mut r = rng.borrow_mut();
+                r.random_range(0..max_len)
+            };
+            let mut map = BTreeMap::new();
+            for _ in 0..len {
+                let k = match Pin::new(&mut arb_key).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => {
+                        yield map;
+                        return ();
+                    }
+                };
+                let v = match Pin::new(&mut arb_val).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => {
+                        yield map;
+                        return ();
+                    }
+                };
+                map.insert(k, v);
+            }
+            yield map;
         }
     }
 }
