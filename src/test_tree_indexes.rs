@@ -135,12 +135,10 @@ fn do_arb_expr_depth_n(
     arena: Rc<RefCell<Vec<Expr>>>,
     rng: Rc<RefCell<StdRng>>,
     max_width: usize,
-    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>>>,
-    depth: usize,
+    child_coro: Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>>,
 ) -> Rc<RefCell<dyn ArbCoro<ExprId> + Unpin>> {
     let coro = #[coroutine]
     move || {
-        let child_coro = Rc::clone(&coro_from_depth[depth - 1]);
         let mut term = arb_term(Rc::clone(&arena), Rc::clone(&rng));
         let mut opt = arb_opt(Rc::clone(&arena), Rc::clone(&child_coro));
         let mut alt = arb_alt(
@@ -202,8 +200,7 @@ fn arb_expr(
                 Rc::clone(&arena),
                 Rc::clone(&rng),
                 max_width,
-                Rc::new(coro_from_depth[0..i].to_owned()),
-                i,
+                Rc::clone(&coro_from_depth[i - 1]),
             );
             coro_from_depth.push(coro);
         }
