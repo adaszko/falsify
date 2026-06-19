@@ -1,9 +1,9 @@
 #![cfg(test)]
 
 use super::*;
-use rand::RngExt;
 use rand::distr::{Alphanumeric, SampleString};
 use rand::rngs::StdRng;
+use rand::seq::IndexedRandom;
 use std::cell::RefCell;
 use std::cmp::max;
 use std::ops::DerefMut;
@@ -108,23 +108,33 @@ fn do_arb_expr(
             remaining_depth - 1,
         );
 
-        loop {
-            let variant_index = {
+        let mut unexhausted_variants = vec![0, 1, 2];
+        while unexhausted_variants.len() > 0 {
+            let tree_node_variant = {
                 let mut r = rng.borrow_mut();
-                r.random_range(0..=2)
+                unexhausted_variants.choose(&mut r).unwrap()
             };
-            let expr_id = match variant_index {
+            let expr_id = match tree_node_variant {
                 0 => match Pin::new(&mut term).resume(()) {
-                    CoroutineState::Yielded(child_id) => child_id,
-                    CoroutineState::Complete(()) => return (), // TODO fall back on other variants
+                    CoroutineState::Yielded(expr_id) => expr_id,
+                    CoroutineState::Complete(()) => {
+                        unexhausted_variants.remove(*tree_node_variant);
+                        continue;
+                    }
                 },
                 1 => match Pin::new(&mut opt).resume(()) {
-                    CoroutineState::Yielded(child_id) => child_id,
-                    CoroutineState::Complete(()) => return (), // TODO fall back on other variants
+                    CoroutineState::Yielded(expr_id) => expr_id,
+                    CoroutineState::Complete(()) => {
+                        unexhausted_variants.remove(*tree_node_variant);
+                        continue;
+                    }
                 },
                 2 => match Pin::new(&mut alt).resume(()) {
-                    CoroutineState::Yielded(child_id) => child_id,
-                    CoroutineState::Complete(()) => return (), // TODO fall back on other variants
+                    CoroutineState::Yielded(expr_id) => expr_id,
+                    CoroutineState::Complete(()) => {
+                        unexhausted_variants.remove(*tree_node_variant);
+                        continue;
+                    }
                 },
                 _ => unreachable!(),
             };
