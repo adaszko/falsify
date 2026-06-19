@@ -105,14 +105,6 @@ fn arb_alt(
     }
 }
 
-fn arb_expr_depth_0() -> Rc<RefCell<dyn ArbGen<ExprId> + Unpin>> {
-    let coro = #[coroutine]
-    move || {
-        panic!("Resumed a dummy coroutine!");
-    };
-    Rc::new(RefCell::new(coro))
-}
-
 fn do_arb_expr_depth_1(
     arena: Rc<RefCell<Vec<Expr>>>,
     rng: Rc<RefCell<StdRng>>,
@@ -192,21 +184,13 @@ fn arb_expr(
 ) -> impl ArbGen<ExprId> + Unpin {
     #[coroutine]
     move || {
-        let mut coro_from_depth: Vec<Rc<RefCell<dyn ArbGen<ExprId> + Unpin>>> = Default::default();
-        coro_from_depth.push(arb_expr_depth_0());
-        coro_from_depth.push(do_arb_expr_depth_1(Rc::clone(&arena), Rc::clone(&rng)));
-        for i in 2..max_depth {
-            let coro = do_arb_expr_depth_n(
-                Rc::clone(&arena),
-                Rc::clone(&rng),
-                max_width,
-                Rc::clone(&coro_from_depth[i - 1]),
-            );
-            coro_from_depth.push(coro);
+        let mut coro = do_arb_expr_depth_1(Rc::clone(&arena), Rc::clone(&rng));
+        for _ in 2..max_depth {
+            coro = do_arb_expr_depth_n(Rc::clone(&arena), Rc::clone(&rng), max_width, coro);
         }
         loop {
             let expr_id = {
-                let mut expr = coro_from_depth[max_depth - 1].borrow_mut();
+                let mut expr = coro.borrow_mut();
                 let expr_id = match Pin::new(expr.deref_mut()).resume(()) {
                     CoroutineState::Yielded(expr_id) => expr_id,
                     CoroutineState::Complete(()) => return (),
