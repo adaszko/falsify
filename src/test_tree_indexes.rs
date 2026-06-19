@@ -248,11 +248,14 @@ fn test_tree_width_within_limits() {
     const MAX_DEPTH: usize = 3;
     let arena_rc = AssertUnwindSafe(Rc::clone(&arena));
     let arb = arb_expr(arena, rng, MAX_WIDTH, MAX_DEPTH);
-    // TODO clear the arena on every try in falsify()
-    if let Some(counterexample) = falsify(
+    if let Some(counterexample) = falsify_reset(
         |t| {
             let arena_guard = arena_rc.borrow();
             get_max_tree_width(arena_guard.as_ref(), t) <= MAX_WIDTH
+        },
+        || {
+            let mut arena_guard = arena_rc.borrow_mut();
+            arena_guard.clear();
         },
         arb,
     ) {
@@ -268,11 +271,14 @@ fn test_tree_depth_within_limits() {
     const MAX_DEPTH: usize = 10;
     let arena_rc = AssertUnwindSafe(Rc::clone(&arena));
     let arb = arb_expr(arena, rng, MAX_WIDTH, MAX_DEPTH);
-    // TODO clear the arena on every try in falsify()
-    if let Some(counterexample) = falsify(
+    if let Some(counterexample) = falsify_reset(
         |t| {
             let arena_guard = arena_rc.borrow();
             get_max_tree_depth(arena_guard.as_ref(), t) <= MAX_DEPTH
+        },
+        || {
+            let mut arena_guard = arena_rc.borrow_mut();
+            arena_guard.clear();
         },
         arb,
     ) {

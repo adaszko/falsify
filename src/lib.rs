@@ -64,6 +64,7 @@ pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
     test: impl Fn(T) -> TestResult + RefUnwindSafe,
     mut arb_t: impl ArbCoro<T> + Unpin,
     mut tries: usize,
+    reset: impl Fn(),
 ) -> Option<T> {
     while tries > 0 {
         let value = match Pin::new(&mut arb_t).resume(()) {
@@ -81,9 +82,13 @@ pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
         match result {
             Ok(TestResult::Pass) => {
                 tries -= 1;
+                reset();
                 continue;
             }
-            Ok(TestResult::Reject) => continue,
+            Ok(TestResult::Reject) => {
+                reset();
+                continue;
+            }
             Ok(TestResult::Fail) | Err(..) => return Some(value),
         }
     }
@@ -95,14 +100,22 @@ pub fn falsify_times<T: Clone + RefUnwindSafe>(
     arb_t: impl ArbCoro<T> + Unpin,
     tries: usize,
 ) -> Option<T> {
-    falsify_with_rejections(|value| TestResult::from(test(value)), arb_t, tries)
+    falsify_with_rejections(|value| TestResult::from(test(value)), arb_t, tries, || {})
 }
 
 pub fn falsify<T: Clone + RefUnwindSafe>(
     test: impl Fn(T) -> bool + RefUnwindSafe,
     arb_t: impl ArbCoro<T> + Unpin,
 ) -> Option<T> {
-    falsify_with_rejections(|value| TestResult::from(test(value)), arb_t, 100)
+    falsify_with_rejections(|value| TestResult::from(test(value)), arb_t, 100, || {})
+}
+
+pub fn falsify_reset<T: Clone + RefUnwindSafe>(
+    test: impl Fn(T) -> bool + RefUnwindSafe,
+    reset: impl Fn(),
+    arb_t: impl ArbCoro<T> + Unpin,
+) -> Option<T> {
+    falsify_with_rejections(|value| TestResult::from(test(value)), arb_t, 100, reset)
 }
 
 #[cfg(test)]
