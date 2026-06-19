@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+use std::hash::Hash;
 use std::ops::{Coroutine, CoroutineState};
 use std::panic::{RefUnwindSafe, catch_unwind};
 use std::pin::Pin;
@@ -53,6 +55,29 @@ pub fn shrink_vec_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCoro<V
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid = high[0..mid_len].to_vec();
+            let res = yield mid.clone();
+            match res {
+                TestResult::Fail => {
+                    high = mid;
+                }
+                TestResult::Pass | TestResult::Reject => {
+                    low = mid;
+                }
+            }
+        }
+        high
+    }
+}
+
+pub fn shrink_hashset_binary_search<T: Eq + Hash + Clone>(
+    mut high: HashSet<T>,
+) -> impl ShrinkCoro<HashSet<T>> {
+    #[coroutine]
+    move |_| {
+        let mut low = HashSet::new();
+        while high.len() > low.len() + 1 {
+            let mid_len = low.len() + ((high.len() - low.len()) / 2);
+            let mid: HashSet<T> = high.iter().take(mid_len).cloned().collect();
             let res = yield mid.clone();
             match res {
                 TestResult::Fail => {
