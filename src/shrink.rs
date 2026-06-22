@@ -291,19 +291,15 @@ pub fn shrink<T: Clone + RefUnwindSafe>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::assert_matches;
 
     // TODO test_shrink_usize_binary_search()
     // TODO shrink_usize_exhaustive
 
     #[test]
     fn test_shrink_vec_binary_search() {
-        let mut shrinker = shrink_vec_binary_search::<usize>(vec![]);
-        let _v: Vec<usize> = vec![];
-        assert_matches!(
-            Pin::new(&mut shrinker).resume(TestResult::Pass),
-            CoroutineState::Complete(_v)
-        );
+        let type_shrinker = shrink_vec_binary_search(vec![1, 2, 3]);
+        let smallest_falsifier = shrink(|v| !v.contains(&1), type_shrinker);
+        assert_eq!(smallest_falsifier, &[1]);
     }
 
     // TODO test_shrink_hashset_binary_search()

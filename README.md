@@ -11,3 +11,16 @@ Design assumptions:
  * arb_*() coroutines should generate random values indefinitely and never return...
  * ...unless the data type is small enough to enumerate all values exhaustively, then the coroutine should return
  * shrink_*() coroutines should finish once they can't shrink further
+
+Shrinker design:
+ * Rust coroutines impose a restriction: `T` and `S` has to be the same type.
+
+```Rust
+let mut coroutine = #[coroutine] |t: T| {
+    let s: S = yield 123;
+};
+```
+
+Given that restriction, it's necessary for `S` to be `TestResult`.  This implies `T` also has to be
+`TestResult`.  This results in a slightly more awkward API than necessary, namely the falsifier argument is
+accepted by the custom-type shrinker, not the general `shrink()` function.
