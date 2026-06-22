@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 use std::hash::Hash;
 use std::ops::{Coroutine, CoroutineState};
 use std::panic::{RefUnwindSafe, catch_unwind};
@@ -15,8 +15,8 @@ pub fn shrink_usize_binary_search(mut high: usize) -> impl ShrinkCoro<usize> {
         let mut low = 0;
         while high > low + 1 {
             let mid = low + ((high - low) / 2);
-            let res = yield mid;
-            match res {
+            let test_result = yield mid;
+            match test_result {
                 TestResult::Fail => {
                     // test failed after previously failing -- narrow down the range further
                     high = mid;
@@ -36,8 +36,8 @@ pub fn shrink_usize_exhaustive(falsifier: usize) -> impl ShrinkCoro<usize> {
     move |_| {
         let smallest_falsifier = 'search: {
             for val in 0..=falsifier {
-                let res = yield val;
-                match res {
+                let test_result = yield val;
+                match test_result {
                     TestResult::Fail => break 'search val,
                     TestResult::Pass | TestResult::Reject => continue,
                 }
@@ -55,8 +55,8 @@ pub fn shrink_vec_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCoro<V
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid = high[0..mid_len].to_vec();
-            let res = yield mid.clone();
-            match res {
+            let test_result = yield mid.clone();
+            match test_result {
                 TestResult::Fail => {
                     high = mid;
                 }
@@ -78,8 +78,8 @@ pub fn shrink_hashset_binary_search<T: Eq + Hash + Clone>(
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: HashSet<T> = high.iter().take(mid_len).cloned().collect();
-            let res = yield mid.clone();
-            match res {
+            let test_result = yield mid.clone();
+            match test_result {
                 TestResult::Fail => {
                     high = mid;
                 }
@@ -89,6 +89,178 @@ pub fn shrink_hashset_binary_search<T: Eq + Hash + Clone>(
             }
         }
         high
+    }
+}
+
+pub fn shrink_btreeset_binary_search<T: Ord + Clone>(
+    mut high: BTreeSet<T>,
+) -> impl ShrinkCoro<BTreeSet<T>> {
+    #[coroutine]
+    move |_| {
+        let mut low = BTreeSet::new();
+        while high.len() > low.len() + 1 {
+            let mid_len = low.len() + ((high.len() - low.len()) / 2);
+            let mid: BTreeSet<T> = high.iter().take(mid_len).cloned().collect();
+            let test_result = yield mid.clone();
+            match test_result {
+                TestResult::Fail => {
+                    high = mid;
+                }
+                TestResult::Pass | TestResult::Reject => {
+                    low = mid;
+                }
+            }
+        }
+        high
+    }
+}
+
+pub fn shrink_vec_deque_binary_search<T: Ord + Clone>(
+    mut high: VecDeque<T>,
+) -> impl ShrinkCoro<VecDeque<T>> {
+    #[coroutine]
+    move |_| {
+        let mut low = VecDeque::new();
+        while high.len() > low.len() + 1 {
+            let mid_len = low.len() + ((high.len() - low.len()) / 2);
+            let mid: VecDeque<T> = high.iter().take(mid_len).cloned().collect();
+            let test_result = yield mid.clone();
+            match test_result {
+                TestResult::Fail => {
+                    high = mid;
+                }
+                TestResult::Pass | TestResult::Reject => {
+                    low = mid;
+                }
+            }
+        }
+        high
+    }
+}
+
+pub fn shrink_binary_heap_binary_search<T: Ord + Clone>(
+    mut high: BinaryHeap<T>,
+) -> impl ShrinkCoro<BinaryHeap<T>> {
+    #[coroutine]
+    move |_| {
+        let mut low = BinaryHeap::new();
+        while high.len() > low.len() + 1 {
+            let mid_len = low.len() + ((high.len() - low.len()) / 2);
+            let mid: BinaryHeap<T> = high.iter().take(mid_len).cloned().collect();
+            let test_result = yield mid.clone();
+            match test_result {
+                TestResult::Fail => {
+                    high = mid;
+                }
+                TestResult::Pass | TestResult::Reject => {
+                    low = mid;
+                }
+            }
+        }
+        high
+    }
+}
+
+pub fn shrink_linked_list_binary_search<T: Ord + Clone>(
+    mut high: LinkedList<T>,
+) -> impl ShrinkCoro<LinkedList<T>> {
+    #[coroutine]
+    move |_| {
+        let mut low = LinkedList::new();
+        while high.len() > low.len() + 1 {
+            let mid_len = low.len() + ((high.len() - low.len()) / 2);
+            let mid: LinkedList<T> = high.iter().take(mid_len).cloned().collect();
+            let test_result = yield mid.clone();
+            match test_result {
+                TestResult::Fail => {
+                    high = mid;
+                }
+                TestResult::Pass | TestResult::Reject => {
+                    low = mid;
+                }
+            }
+        }
+        high
+    }
+}
+
+pub fn shrink_hashmap_binary_search<K: Eq + Hash + Clone, V: Clone>(
+    mut high: HashMap<K, V>,
+) -> impl ShrinkCoro<HashMap<K, V>> {
+    #[coroutine]
+    move |_| {
+        let mut low = HashMap::new();
+        while high.len() > low.len() + 1 {
+            let mid_len = low.len() + ((high.len() - low.len()) / 2);
+            let mid: HashMap<K, V> = high
+                .iter()
+                .take(mid_len)
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+            let test_result = yield mid.clone();
+            match test_result {
+                TestResult::Fail => {
+                    high = mid;
+                }
+                TestResult::Pass | TestResult::Reject => {
+                    low = mid;
+                }
+            }
+        }
+        high
+    }
+}
+
+pub fn shrink_btreemap_binary_search<K: Ord + Clone, V: Clone>(
+    mut high: BTreeMap<K, V>,
+) -> impl ShrinkCoro<BTreeMap<K, V>> {
+    #[coroutine]
+    move |_| {
+        let mut low = BTreeMap::new();
+        while high.len() > low.len() + 1 {
+            let mid_len = low.len() + ((high.len() - low.len()) / 2);
+            let mid: BTreeMap<K, V> = high
+                .iter()
+                .take(mid_len)
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+            let test_result = yield mid.clone();
+            match test_result {
+                TestResult::Fail => {
+                    high = mid;
+                }
+                TestResult::Pass | TestResult::Reject => {
+                    low = mid;
+                }
+            }
+        }
+        high
+    }
+}
+
+/// Strategy: Run test with `None`.  If it failed, we have our smallest falsifier.  If the test
+/// succeeded, produce successive `Some(t)`, where `t` comes from the underlying shirinker for `t`.
+pub fn shrink_option<T: Clone>(
+    mut shrink_t: impl ShrinkCoro<T> + Unpin,
+) -> impl ShrinkCoro<Option<T>> {
+    #[coroutine]
+    move |_| {
+        let test_result = yield None;
+        match test_result {
+            TestResult::Fail => {
+                return None;
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
+        let mut test_result = TestResult::Fail;
+        loop {
+            let value = match Pin::new(&mut shrink_t).resume(test_result) {
+                CoroutineState::Yielded(value) => value,
+                CoroutineState::Complete(value) => return Some(value),
+            };
+            test_result = yield Some(value.clone());
+        }
     }
 }
 
@@ -121,6 +293,9 @@ mod tests {
     use super::*;
     use std::assert_matches;
 
+    // TODO test_shrink_usize_binary_search()
+    // TODO shrink_usize_exhaustive
+
     #[test]
     fn test_shrink_vec_binary_search() {
         let mut shrinker = shrink_vec_binary_search::<usize>(vec![]);
@@ -130,4 +305,13 @@ mod tests {
             CoroutineState::Complete(_v)
         );
     }
+
+    // TODO test_shrink_hashset_binary_search()
+    // TODO test_shrink_btreeset_binary_search()
+    // TODO test_shrink_vec_deque_binary_search()
+    // TODO test_shrink_binary_heap_binary_search()
+    // TODO test_shrink_linked_list_binary_search()
+    // TODO test_shrink_hashmap_binary_search()
+    // TODO test_shrink_btreemap_binary_search()
+    // TODO test_shrink_option()
 }
