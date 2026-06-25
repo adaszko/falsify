@@ -20,7 +20,7 @@ use std::rc::Rc;
 
 static SEED_ENV_VAR: &str = "GENTEST_SEED";
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum TestResult {
     Pass,
     Fail,
