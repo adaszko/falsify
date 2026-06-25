@@ -110,7 +110,7 @@ pub fn falsify<T: Clone + RefUnwindSafe>(
     falsify_with_rejections(|value| TestResult::from(test(value)), arb_t, 100, || {})
 }
 
-pub fn falsify_reset<T: Clone + RefUnwindSafe>(
+pub fn falsify_with_reset<T: Clone + RefUnwindSafe>(
     test: impl Fn(T) -> bool + RefUnwindSafe,
     reset: impl Fn(),
     arb_t: impl ArbGen<T> + Unpin,

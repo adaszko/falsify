@@ -239,7 +239,7 @@ fn test_tree_width_within_limits() {
     const MAX_DEPTH: usize = 3;
     let arena_rc = AssertUnwindSafe(Rc::clone(&arena));
     let arb = arb_expr(arena, rng, MAX_WIDTH, MAX_DEPTH);
-    if let Some(counterexample) = falsify_reset(
+    if let Some(counterexample) = falsify_with_reset(
         |t| {
             let arena_guard = arena_rc.borrow();
             get_max_tree_width(arena_guard.as_ref(), t) <= MAX_WIDTH
@@ -262,7 +262,7 @@ fn test_tree_depth_within_limits() {
     const MAX_DEPTH: usize = 10;
     let arena_rc = AssertUnwindSafe(Rc::clone(&arena));
     let arb = arb_expr(arena, rng, MAX_WIDTH, MAX_DEPTH);
-    if let Some(counterexample) = falsify_reset(
+    if let Some(counterexample) = falsify_with_reset(
         |t| {
             let arena_guard = arena_rc.borrow();
             get_max_tree_depth(arena_guard.as_ref(), t) <= MAX_DEPTH

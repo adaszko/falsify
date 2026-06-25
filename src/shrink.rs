@@ -48,7 +48,7 @@ pub fn shrink_usize_exhaustive(falsifier: usize) -> impl ShrinkCoro<usize> {
     }
 }
 
-pub fn shrink_vec_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCoro<Vec<T>> {
+pub fn shrink_vec_len_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCoro<Vec<T>> {
     #[coroutine]
     move |_| {
         let mut low = vec![];
@@ -69,7 +69,7 @@ pub fn shrink_vec_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCoro<V
     }
 }
 
-pub fn shrink_hashset_binary_search<T: Eq + Hash + Clone>(
+pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone>(
     mut high: HashSet<T>,
 ) -> impl ShrinkCoro<HashSet<T>> {
     #[coroutine]
@@ -92,7 +92,7 @@ pub fn shrink_hashset_binary_search<T: Eq + Hash + Clone>(
     }
 }
 
-pub fn shrink_btreeset_binary_search<T: Ord + Clone>(
+pub fn shrink_btreeset_len_binary_search<T: Ord + Clone>(
     mut high: BTreeSet<T>,
 ) -> impl ShrinkCoro<BTreeSet<T>> {
     #[coroutine]
@@ -115,7 +115,7 @@ pub fn shrink_btreeset_binary_search<T: Ord + Clone>(
     }
 }
 
-pub fn shrink_vec_deque_binary_search<T: Ord + Clone>(
+pub fn shrink_vec_deque_len_binary_search<T: Ord + Clone>(
     mut high: VecDeque<T>,
 ) -> impl ShrinkCoro<VecDeque<T>> {
     #[coroutine]
@@ -138,7 +138,7 @@ pub fn shrink_vec_deque_binary_search<T: Ord + Clone>(
     }
 }
 
-pub fn shrink_binary_heap_binary_search<T: Ord + Clone>(
+pub fn shrink_binary_heap_len_binary_search<T: Ord + Clone>(
     mut high: BinaryHeap<T>,
 ) -> impl ShrinkCoro<BinaryHeap<T>> {
     #[coroutine]
@@ -161,7 +161,7 @@ pub fn shrink_binary_heap_binary_search<T: Ord + Clone>(
     }
 }
 
-pub fn shrink_linked_list_binary_search<T: Ord + Clone>(
+pub fn shrink_linked_list_len_binary_search<T: Ord + Clone>(
     mut high: LinkedList<T>,
 ) -> impl ShrinkCoro<LinkedList<T>> {
     #[coroutine]
@@ -184,7 +184,7 @@ pub fn shrink_linked_list_binary_search<T: Ord + Clone>(
     }
 }
 
-pub fn shrink_hashmap_binary_search<K: Eq + Hash + Clone, V: Clone>(
+pub fn shrink_hashmap_len_binary_search<K: Eq + Hash + Clone, V: Clone>(
     mut high: HashMap<K, V>,
 ) -> impl ShrinkCoro<HashMap<K, V>> {
     #[coroutine]
@@ -211,7 +211,7 @@ pub fn shrink_hashmap_binary_search<K: Eq + Hash + Clone, V: Clone>(
     }
 }
 
-pub fn shrink_btreemap_binary_search<K: Ord + Clone, V: Clone>(
+pub fn shrink_btreemap_len_binary_search<K: Ord + Clone, V: Clone>(
     mut high: BTreeMap<K, V>,
 ) -> impl ShrinkCoro<BTreeMap<K, V>> {
     #[coroutine]
@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     fn test_shrink_vec_binary_search() {
-        let type_shrinker = shrink_vec_binary_search(vec![1, 2, 3]);
+        let type_shrinker = shrink_vec_len_binary_search(vec![1, 2, 3]);
         let smallest_falsifier = shrink(|v| !v.contains(&1), type_shrinker);
         assert_eq!(smallest_falsifier, &[1]);
     }
