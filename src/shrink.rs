@@ -13,10 +13,17 @@ pub fn shrink_usize_binary_search(mut high: usize) -> impl ShrinkCoro<usize> {
     #[coroutine]
     move |_| {
         let mut low = 0;
-        while high > low + 1 {
+
+        match (yield low) {
+            TestResult::Fail => {
+                high = low;
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
+        while low + 1 < high {
             let mid = low + ((high - low) / 2);
-            let test_result = yield mid;
-            match test_result {
+            match (yield mid) {
                 TestResult::Fail => {
                     // test failed after previously failing -- narrow down the range further
                     high = mid;
@@ -35,10 +42,9 @@ pub fn shrink_usize_exhaustive(falsifier: usize) -> impl ShrinkCoro<usize> {
     #[coroutine]
     move |_| {
         let smallest_falsifier = 'search: {
-            for val in 0..=falsifier {
-                let test_result = yield val;
-                match test_result {
-                    TestResult::Fail => break 'search val,
+            for value in 0..=falsifier {
+                match (yield value) {
+                    TestResult::Fail => break 'search value,
                     TestResult::Pass | TestResult::Reject => continue,
                 }
             }
@@ -52,11 +58,18 @@ pub fn shrink_vec_len_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCo
     #[coroutine]
     move |_| {
         let mut low = vec![];
+
+        match (yield low.clone()) {
+            TestResult::Fail => {
+                high = low.clone();
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid = high[0..mid_len].to_vec();
-            let test_result = yield mid.clone();
-            match test_result {
+            match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
                 }
@@ -75,11 +88,18 @@ pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone>(
     #[coroutine]
     move |_| {
         let mut low = HashSet::new();
+
+        match (yield low.clone()) {
+            TestResult::Fail => {
+                high = low.clone();
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: HashSet<T> = high.iter().take(mid_len).cloned().collect();
-            let test_result = yield mid.clone();
-            match test_result {
+            match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
                 }
@@ -98,11 +118,18 @@ pub fn shrink_btreeset_len_binary_search<T: Ord + Clone>(
     #[coroutine]
     move |_| {
         let mut low = BTreeSet::new();
+
+        match (yield low.clone()) {
+            TestResult::Fail => {
+                high = low.clone();
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: BTreeSet<T> = high.iter().take(mid_len).cloned().collect();
-            let test_result = yield mid.clone();
-            match test_result {
+            match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
                 }
@@ -121,11 +148,18 @@ pub fn shrink_vec_deque_len_binary_search<T: Ord + Clone>(
     #[coroutine]
     move |_| {
         let mut low = VecDeque::new();
+
+        match (yield low.clone()) {
+            TestResult::Fail => {
+                high = low.clone();
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: VecDeque<T> = high.iter().take(mid_len).cloned().collect();
-            let test_result = yield mid.clone();
-            match test_result {
+            match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
                 }
@@ -144,11 +178,18 @@ pub fn shrink_binary_heap_len_binary_search<T: Ord + Clone>(
     #[coroutine]
     move |_| {
         let mut low = BinaryHeap::new();
+
+        match (yield low.clone()) {
+            TestResult::Fail => {
+                high = low.clone();
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: BinaryHeap<T> = high.iter().take(mid_len).cloned().collect();
-            let test_result = yield mid.clone();
-            match test_result {
+            match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
                 }
@@ -167,11 +208,18 @@ pub fn shrink_linked_list_len_binary_search<T: Ord + Clone>(
     #[coroutine]
     move |_| {
         let mut low = LinkedList::new();
+
+        match (yield low.clone()) {
+            TestResult::Fail => {
+                high = low.clone();
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: LinkedList<T> = high.iter().take(mid_len).cloned().collect();
-            let test_result = yield mid.clone();
-            match test_result {
+            match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
                 }
@@ -190,6 +238,14 @@ pub fn shrink_hashmap_len_binary_search<K: Eq + Hash + Clone, V: Clone>(
     #[coroutine]
     move |_| {
         let mut low = HashMap::new();
+
+        match (yield low.clone()) {
+            TestResult::Fail => {
+                high = low.clone();
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: HashMap<K, V> = high
@@ -197,8 +253,7 @@ pub fn shrink_hashmap_len_binary_search<K: Eq + Hash + Clone, V: Clone>(
                 .take(mid_len)
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect();
-            let test_result = yield mid.clone();
-            match test_result {
+            match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
                 }
@@ -217,6 +272,14 @@ pub fn shrink_btreemap_len_binary_search<K: Ord + Clone, V: Clone>(
     #[coroutine]
     move |_| {
         let mut low = BTreeMap::new();
+
+        match (yield low.clone()) {
+            TestResult::Fail => {
+                high = low.clone();
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: BTreeMap<K, V> = high
@@ -224,8 +287,7 @@ pub fn shrink_btreemap_len_binary_search<K: Ord + Clone, V: Clone>(
                 .take(mid_len)
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect();
-            let test_result = yield mid.clone();
-            match test_result {
+            match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
                 }
@@ -341,4 +403,10 @@ mod tests {
         let smallest_falsifier = shrink(|v| !v.contains_key(&1), shrinker);
         assert_eq!(smallest_falsifier, BTreeMap::from([(1, ())]));
     }
+
+    // TODO Implement a unit test for HashSet where the initial hasher state is controlled in the
+    // test for determimism
+
+    // TODO Implement a unit test for HashMap where the initial hasher state is controlled in the
+    // test for determimism
 }
