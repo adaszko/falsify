@@ -6,7 +6,7 @@ use std::pin::Pin;
 
 use crate::TestResult;
 
-/// Every shrinker coroutine of type `Y` is `impl ShrinkCoro<Y>`.
+/// Every `Y` type shrinker is `impl ShrinkCoro<Y>`.
 pub trait ShrinkCoro<Y>: Coroutine<TestResult, Yield = Y, Return = Y> {}
 impl<X, Y> ShrinkCoro<Y> for X where X: Coroutine<TestResult, Yield = Y, Return = Y> {}
 
@@ -329,11 +329,11 @@ pub fn shrink_option<T: Clone>(
 
 pub fn shrink_with_rejections<T: Clone + RefUnwindSafe>(
     test: impl Fn(T) -> TestResult + RefUnwindSafe,
-    mut root_shrink_coro: impl ShrinkCoro<T> + Unpin,
+    mut shrink_t: impl ShrinkCoro<T> + Unpin,
 ) -> T {
     let mut result = TestResult::Fail;
     loop {
-        let value = match Pin::new(&mut root_shrink_coro).resume(result) {
+        let value = match Pin::new(&mut shrink_t).resume(result) {
             CoroutineState::Yielded(value) => value,
             CoroutineState::Complete(falsifier) => return falsifier,
         };
@@ -346,9 +346,9 @@ pub fn shrink_with_rejections<T: Clone + RefUnwindSafe>(
 
 pub fn shrink<T: Clone + RefUnwindSafe>(
     test: impl Fn(T) -> bool + RefUnwindSafe,
-    root_shrink_coro: impl ShrinkCoro<T> + Unpin,
+    shrink_t: impl ShrinkCoro<T> + Unpin,
 ) -> T {
-    shrink_with_rejections(|value| TestResult::from(test(value)), root_shrink_coro)
+    shrink_with_rejections(|value| TestResult::from(test(value)), shrink_t)
 }
 
 #[cfg(test)]

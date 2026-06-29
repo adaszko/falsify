@@ -1,3 +1,18 @@
+//! Simple usage example:
+//!
+//! ```
+//! use falsify::*;
+//!
+//! let rng = make_rng();
+//! let arb = arb_usize(rng);
+//! let test = |n| n < 10;
+//! if let Some(falsifier) = falsify(test, arb) {
+//!     let shrinker = shrink_usize_binary_search(falsifier);
+//!     let smallest = shrink(test, shrinker);
+//!     assert_eq!(smallest, 10);
+//! }
+//! ```
+
 // https://doc.rust-lang.org/unstable-book/language-features/coroutines.html
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
@@ -153,11 +168,11 @@ mod tests {
     fn test_falsify_then_shrink() {
         let rng = make_rng();
         let arb = arb_usize(rng);
-        let test = |n| n % 2 == 0;
+        let test = |n| n < 10;
         if let Some(falsifier) = falsify(test, arb) {
-            let shrinker = shrink_usize_exhaustive(falsifier);
+            let shrinker = shrink_usize_binary_search(falsifier);
             let smallest = shrink(test, shrinker);
-            assert_eq!(smallest, 1);
+            assert_eq!(smallest, 10);
         };
     }
 }
