@@ -18,7 +18,7 @@ use std::panic::{RefUnwindSafe, catch_unwind};
 use std::pin::Pin;
 use std::rc::Rc;
 
-static SEED_ENV_VAR: &str = "GENTEST_SEED";
+static SEED_ENV_VAR: &str = "FALSIFY_SEED";
 
 #[derive(Debug, Copy, Clone)]
 pub enum TestResult {
@@ -37,7 +37,7 @@ impl From<bool> for TestResult {
     }
 }
 
-/// Takes the seed value from the GENTEST_SEED environment variable, if set.
+/// Takes the seed value from the FALSIFY_SEED environment variable, if set.
 pub fn make_rng() -> Rc<RefCell<StdRng>> {
     let mut std_rng: StdRng = rand::make_rng();
     let seed: u64 = if let Ok(seed_string) = env::var(SEED_ENV_VAR) {

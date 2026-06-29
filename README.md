@@ -7,7 +7,7 @@ Design:
  * Go light on macros.  They obscure the testing logic
  * The crate catches panics by default in order to treat .unwrap()s as test failures
  * Diagnostic information (e.g. RNG seed value) is printed on stderr; use cargo test -- ... --nocapture to see
- * RNG seed value is configurable via GENTEST_SEED environment variable for quick reproducibility
+ * RNG seed value is configurable via FALSIFY_SEED environment variable for quick reproducibility
 
 Design assumptions:
  * arb_*() coroutines should generate random values indefinitely and never return...
