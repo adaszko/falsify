@@ -7,6 +7,7 @@ use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 use std::rc::Rc;
 
+/// Every coroutine generator of arbitrary inputs of type `Y` is `impl ArbGen<Y>`.
 pub trait ArbGen<Y>: Coroutine<Yield = Y, Return = ()> {}
 impl<X, Y> ArbGen<Y> for X where X: Coroutine<Yield = Y, Return = ()> {}
 

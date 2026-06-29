@@ -6,6 +6,7 @@ use std::pin::Pin;
 
 use crate::TestResult;
 
+/// Every shrinker coroutine of type `Y` is `impl ShrinkCoro<Y>`.
 pub trait ShrinkCoro<Y>: Coroutine<TestResult, Yield = Y, Return = Y> {}
 impl<X, Y> ShrinkCoro<Y> for X where X: Coroutine<TestResult, Yield = Y, Return = Y> {}
 
@@ -300,7 +301,7 @@ pub fn shrink_btreemap_len_binary_search<K: Ord + Clone, V: Clone>(
     }
 }
 
-/// Strategy: Run test with `None`.  If it failed, we have our smallest falsifier.  If the test
+/// Tactic: Run test with `None`.  If it failed, we have our smallest falsifier.  If the test
 /// succeeded, produce successive `Some(t)`, where `t` comes from the underlying shirinker for `t`.
 pub fn shrink_option<T: Clone>(
     mut shrink_t: impl ShrinkCoro<T> + Unpin,

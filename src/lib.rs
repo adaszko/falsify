@@ -37,7 +37,7 @@ impl From<bool> for TestResult {
     }
 }
 
-/// Takes the seed value from the FALSIFY_SEED environment variable, if set.
+/// Takes the seed value from the `FALSIFY_SEED` environment variable, if set.
 pub fn make_rng() -> Rc<RefCell<StdRng>> {
     let mut std_rng: StdRng = rand::make_rng();
     let seed: u64 = if let Ok(seed_string) = env::var(SEED_ENV_VAR) {
@@ -155,8 +155,8 @@ mod tests {
         let arb = arb_usize(rng);
         let test = |n| n % 2 == 0;
         if let Some(falsifier) = falsify(test, arb) {
-            let shrink_strategy = shrink_usize_exhaustive(falsifier);
-            let smallest = shrink(test, shrink_strategy);
+            let shrinker = shrink_usize_exhaustive(falsifier);
+            let smallest = shrink(test, shrinker);
             assert_eq!(smallest, 1);
         };
     }
