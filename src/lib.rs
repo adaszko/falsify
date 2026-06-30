@@ -1,4 +1,4 @@
-//! Simple usage example:
+//! Simple usage example (wrap it in a test):
 //!
 //! ```
 //! use falsify::*;

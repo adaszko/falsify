@@ -357,7 +357,7 @@ pub fn shrink<T: Clone + RefUnwindSafe>(
 
 #[cfg(test)]
 mod tests {
-    use fxhash::FxBuildHasher;
+    use std::hash::DefaultHasher;
 
     use super::*;
 
@@ -411,10 +411,21 @@ mod tests {
         assert_eq!(smallest_falsifier, BTreeMap::from([(1, ())]));
     }
 
+    #[derive(Default, Clone)]
+    pub struct DeterministicDefaultHasher;
+
+    impl BuildHasher for DeterministicDefaultHasher {
+        type Hasher = DefaultHasher;
+
+        fn build_hasher(&self) -> Self::Hasher {
+            DefaultHasher::new()
+        }
+    }
+
     #[test]
     fn test_shrink_hashset_binary_search() {
         let input = {
-            let mut input = HashSet::with_hasher(FxBuildHasher::default());
+            let mut input: HashSet<_, DeterministicDefaultHasher> = Default::default();
             input.insert(1);
             input.insert(2);
             input.insert(3);
@@ -424,7 +435,7 @@ mod tests {
         let smallest_falsifier = shrink(|v| !v.contains(&1), shrinker);
 
         let expected = {
-            let mut expected = HashSet::with_hasher(FxBuildHasher::default());
+            let mut expected: HashSet<_, DeterministicDefaultHasher> = Default::default();
             expected.insert(1);
             expected
         };
@@ -434,7 +445,7 @@ mod tests {
     #[test]
     fn test_shrink_hashmap_binary_search() {
         let input = {
-            let mut input = HashMap::with_hasher(FxBuildHasher::default());
+            let mut input: HashMap<_, _, DeterministicDefaultHasher> = Default::default();
             input.insert(1, ());
             input.insert(2, ());
             input.insert(3, ());
@@ -443,7 +454,7 @@ mod tests {
         let shrinker = shrink_hashmap_len_binary_search(input);
         let smallest_falsifier = shrink(|v| !v.contains_key(&1), shrinker);
         let expected = {
-            let mut expected = HashMap::with_hasher(FxBuildHasher::default());
+            let mut expected: HashMap<_, _, DeterministicDefaultHasher> = Default::default();
             expected.insert(1, ());
             expected
         };
