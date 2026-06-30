@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedL
 use std::hash::Hash;
 use std::ops::DerefMut;
 use std::ops::{Coroutine, CoroutineState};
-use std::pin::Pin;
+use std::pin::pin;
 use std::rc::Rc;
 
 /// Every generator of arbitrary test inputs of type `Y` is `impl ArbGen<Y>`.
@@ -41,11 +41,11 @@ pub fn arb_tuple2_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<(T, T)
     #[coroutine]
     move || {
         loop {
-            let t0 = match Pin::new(&mut arb_t).resume(()) {
+            let t0 = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
                 CoroutineState::Complete(()) => return (),
             };
-            let t1 = match Pin::new(&mut arb_t).resume(()) {
+            let t1 = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
                 CoroutineState::Complete(()) => return (),
             };
@@ -58,15 +58,15 @@ pub fn arb_tuple3_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<(T, T,
     #[coroutine]
     move || {
         loop {
-            let t0 = match Pin::new(&mut arb_t).resume(()) {
+            let t0 = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
                 CoroutineState::Complete(()) => return (),
             };
-            let t1 = match Pin::new(&mut arb_t).resume(()) {
+            let t1 = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
                 CoroutineState::Complete(()) => return (),
             };
-            let t2 = match Pin::new(&mut arb_t).resume(()) {
+            let t2 = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
                 CoroutineState::Complete(()) => return (),
             };
@@ -89,7 +89,7 @@ pub fn arb_vec_of<T>(
             };
             let mut v = Vec::with_capacity(len);
             for _ in 0..len {
-                let t = match Pin::new(&mut arb_t).resume(()) {
+                let t = match pin!(&mut arb_t).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield v;
@@ -117,7 +117,7 @@ pub fn arb_vec_deque_of<T>(
             };
             let mut q = VecDeque::with_capacity(len);
             for _ in 0..len {
-                let t = match Pin::new(&mut arb_t).resume(()) {
+                let t = match pin!(&mut arb_t).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield q;
@@ -153,7 +153,7 @@ pub fn arb_binary_heap_of<T: Ord>(
             };
             let mut h = BinaryHeap::with_capacity(len);
             for _ in 0..len {
-                let t = match Pin::new(&mut arb_t).resume(()) {
+                let t = match pin!(&mut arb_t).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield h;
@@ -181,7 +181,7 @@ pub fn arb_linked_list_of<T: Ord>(
             };
             let mut l = LinkedList::new();
             for _ in 0..len {
-                let t = match Pin::new(&mut arb_t).resume(()) {
+                let t = match pin!(&mut arb_t).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield l;
@@ -217,7 +217,7 @@ pub fn arb_hashset_of<T: Hash + Eq>(
             };
             let mut set = HashSet::with_capacity(len);
             for _ in 0..len {
-                let t = match Pin::new(&mut arb_t).resume(()) {
+                let t = match pin!(&mut arb_t).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield set;
@@ -245,7 +245,7 @@ pub fn arb_btreeset_of<T: Ord>(
             };
             let mut set = BTreeSet::new();
             for _ in 0..len {
-                let t = match Pin::new(&mut arb_t).resume(()) {
+                let t = match pin!(&mut arb_t).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield set;
@@ -274,14 +274,14 @@ pub fn arb_hashmap_of<K: Eq + Hash, V>(
             };
             let mut map = HashMap::with_capacity(len);
             for _ in 0..len {
-                let k = match Pin::new(&mut arb_key).resume(()) {
+                let k = match pin!(&mut arb_key).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield map;
                         return ();
                     }
                 };
-                let v = match Pin::new(&mut arb_val).resume(()) {
+                let v = match pin!(&mut arb_val).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield map;
@@ -310,14 +310,14 @@ pub fn arb_btreemap_of<K: Ord, V>(
             };
             let mut map = BTreeMap::new();
             for _ in 0..len {
-                let k = match Pin::new(&mut arb_key).resume(()) {
+                let k = match pin!(&mut arb_key).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield map;
                         return ();
                     }
                 };
-                let v = match Pin::new(&mut arb_val).resume(()) {
+                let v = match pin!(&mut arb_val).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield map;
@@ -347,7 +347,7 @@ pub fn arb_vec_of_rc_refcell_of<T>(
                 };
                 let mut v = Vec::with_capacity(len);
                 for _ in 0..len {
-                    let t = match Pin::new(inner.deref_mut()).resume(()) {
+                    let t = match pin!(inner.deref_mut()).resume(()) {
                         CoroutineState::Yielded(t) => t,
                         CoroutineState::Complete(()) => return (),
                     };
@@ -364,7 +364,7 @@ pub fn arb_option_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Option
     #[coroutine]
     move || {
         loop {
-            let t = match Pin::new(&mut arb_t).resume(()) {
+            let t = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
                 CoroutineState::Complete(()) => return (),
             };
@@ -377,7 +377,7 @@ pub fn arb_result_of<T, E>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Res
     #[coroutine]
     move || {
         loop {
-            let t = match Pin::new(&mut arb_t).resume(()) {
+            let t = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
                 CoroutineState::Complete(()) => return (),
             };
@@ -390,7 +390,7 @@ pub fn arb_box_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Box<T>> {
     #[coroutine]
     move || {
         loop {
-            let t = match Pin::new(&mut arb_t).resume(()) {
+            let t = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
                 CoroutineState::Complete(()) => return (),
             };
@@ -403,7 +403,7 @@ pub fn arb_rc_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Rc<T>> {
     #[coroutine]
     move || {
         loop {
-            let t = match Pin::new(&mut arb_t).resume(()) {
+            let t = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
                 CoroutineState::Complete(()) => return (),
             };

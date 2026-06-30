@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedL
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Coroutine, CoroutineState};
 use std::panic::{RefUnwindSafe, catch_unwind};
-use std::pin::Pin;
+use std::pin::pin;
 
 use crate::TestResult;
 
@@ -322,7 +322,7 @@ pub fn shrink_option<T: Clone>(
 
         let mut test_result = TestResult::Fail;
         loop {
-            let value = match Pin::new(&mut shrink_t).resume(test_result) {
+            let value = match pin!(&mut shrink_t).resume(test_result) {
                 CoroutineState::Yielded(value) => value,
                 CoroutineState::Complete(value) => return Some(value),
             };
@@ -337,7 +337,7 @@ pub fn shrink_with_rejections<T: Clone + RefUnwindSafe>(
 ) -> T {
     let mut result = TestResult::Fail;
     loop {
-        let value = match Pin::new(&mut shrink_t).resume(result) {
+        let value = match pin!(&mut shrink_t).resume(result) {
             CoroutineState::Yielded(value) => value,
             CoroutineState::Complete(falsifier) => return falsifier,
         };

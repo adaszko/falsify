@@ -28,9 +28,9 @@ pub use shrink::*;
 
 use std::cell::RefCell;
 use std::env;
-use std::ops::CoroutineState;
+use std::ops::{Coroutine, CoroutineState};
 use std::panic::{RefUnwindSafe, catch_unwind};
-use std::pin::Pin;
+use std::pin::pin;
 use std::rc::Rc;
 
 static SEED_ENV_VAR: &str = "FALSIFY_SEED";
@@ -82,7 +82,7 @@ pub fn falsify_with_rejections<T: Clone + RefUnwindSafe>(
     reset: impl Fn(),
 ) -> Option<T> {
     while tries > 0 {
-        let value = match Pin::new(&mut arb_t).resume(()) {
+        let value = match pin!(&mut arb_t).resume(()) {
             CoroutineState::Yielded(value) => value,
             CoroutineState::Complete(()) => {
                 if tries > 0 {

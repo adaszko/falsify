@@ -47,7 +47,7 @@ fn arb_opt(
         loop {
             let child = {
                 let mut coro = coro_from_depth[remaining_depth - 1].borrow_mut();
-                match Pin::new(coro.deref_mut()).resume(()) {
+                match pin!(coro.deref_mut()).resume(()) {
                     CoroutineState::Yielded(child_id) => child_id,
                     CoroutineState::Complete(()) => return (),
                 }
@@ -69,7 +69,7 @@ fn arb_alt(
         let coro = Rc::clone(&coro_from_depth[remaining_depth - 1]);
         let mut arb_vec_coro = arb_vec_of_rc_refcell_of(coro, Rc::clone(&rng), max_width);
         loop {
-            let children = match Pin::new(&mut arb_vec_coro).resume(()) {
+            let children = match pin!(&mut arb_vec_coro).resume(()) {
                 CoroutineState::Yielded(subexpr) => subexpr,
                 CoroutineState::Complete(()) => return (),
             };
@@ -92,7 +92,7 @@ fn do_arb_expr(
 
         if remaining_depth == 1 {
             loop {
-                let expr_id = match Pin::new(&mut term).resume(()) {
+                let expr_id = match pin!(&mut term).resume(()) {
                     CoroutineState::Yielded(child_id) => child_id,
                     CoroutineState::Complete(()) => return (),
                 };
@@ -115,21 +115,21 @@ fn do_arb_expr(
                 unexhausted_variants.choose(&mut r).unwrap()
             };
             let expr_id = match tree_node_variant {
-                0 => match Pin::new(&mut term).resume(()) {
+                0 => match pin!(&mut term).resume(()) {
                     CoroutineState::Yielded(expr_id) => expr_id,
                     CoroutineState::Complete(()) => {
                         unexhausted_variants.remove(*tree_node_variant);
                         continue;
                     }
                 },
-                1 => match Pin::new(&mut opt).resume(()) {
+                1 => match pin!(&mut opt).resume(()) {
                     CoroutineState::Yielded(expr_id) => expr_id,
                     CoroutineState::Complete(()) => {
                         unexhausted_variants.remove(*tree_node_variant);
                         continue;
                     }
                 },
-                2 => match Pin::new(&mut alt).resume(()) {
+                2 => match pin!(&mut alt).resume(()) {
                     CoroutineState::Yielded(expr_id) => expr_id,
                     CoroutineState::Complete(()) => {
                         unexhausted_variants.remove(*tree_node_variant);
@@ -165,7 +165,7 @@ fn arb_expr(
         loop {
             let expr_id = {
                 let mut expr = coro_from_depth[max_depth - 1].borrow_mut();
-                let expr_id = match Pin::new(expr.deref_mut()).resume(()) {
+                let expr_id = match pin!(expr.deref_mut()).resume(()) {
                     CoroutineState::Yielded(expr_id) => expr_id,
                     CoroutineState::Complete(()) => return (),
                 };
