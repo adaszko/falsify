@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
-use std::hash::Hash;
+use std::hash::{BuildHasher, Hash};
 use std::ops::{Coroutine, CoroutineState};
 use std::panic::{RefUnwindSafe, catch_unwind};
 use std::pin::Pin;
@@ -83,12 +83,16 @@ pub fn shrink_vec_len_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCo
     }
 }
 
-pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone>(
-    mut high: HashSet<T>,
-) -> impl ShrinkCoro<HashSet<T>> {
+pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone, S: Clone + BuildHasher + Default>(
+    mut high: HashSet<T, S>,
+) -> impl ShrinkCoro<HashSet<T, S>> {
     #[coroutine]
     move |_| {
-        let mut low = HashSet::new();
+        let mut low = {
+            let mut low = high.clone();
+            low.clear();
+            low
+        };
 
         match (yield low.clone()) {
             TestResult::Fail => {
@@ -99,7 +103,7 @@ pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone>(
 
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
-            let mid: HashSet<T> = high.iter().take(mid_len).cloned().collect();
+            let mid: HashSet<T, S> = high.iter().take(mid_len).cloned().collect();
             match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
@@ -353,6 +357,8 @@ pub fn shrink<T: Clone + RefUnwindSafe>(
 
 #[cfg(test)]
 mod tests {
+    use fxhash::FxBuildHasher;
+
     use super::*;
 
     #[test]
@@ -405,8 +411,25 @@ mod tests {
         assert_eq!(smallest_falsifier, BTreeMap::from([(1, ())]));
     }
 
-    // TODO Implement a unit test for HashSet where the initial hasher state is controlled in the
-    // test for determimism
+    #[test]
+    fn test_shrink_hashset_binary_search() {
+        let input = {
+            let mut input = HashSet::with_hasher(FxBuildHasher::default());
+            input.insert(1);
+            input.insert(2);
+            input.insert(3);
+            input
+        };
+        let shrinker = shrink_hashset_len_binary_search(input);
+        let smallest_falsifier = shrink(|v| !v.contains(&1), shrinker);
+
+        let expected = {
+            let mut expected = HashSet::with_hasher(FxBuildHasher::default());
+            expected.insert(1);
+            expected
+        };
+        assert_eq!(smallest_falsifier, expected);
+    }
 
     // TODO Implement a unit test for HashMap where the initial hasher state is controlled in the
     // test for determimism
