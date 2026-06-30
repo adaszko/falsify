@@ -83,16 +83,12 @@ pub fn shrink_vec_len_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCo
     }
 }
 
-pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone, S: Clone + BuildHasher + Default>(
+pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone, S: BuildHasher + Clone + Default>(
     mut high: HashSet<T, S>,
 ) -> impl ShrinkCoro<HashSet<T, S>> {
     #[coroutine]
     move |_| {
-        let mut low = {
-            let mut low = high.clone();
-            low.clear();
-            low
-        };
+        let mut low = HashSet::with_hasher(high.hasher().clone());
 
         match (yield low.clone()) {
             TestResult::Fail => {
@@ -237,12 +233,16 @@ pub fn shrink_linked_list_len_binary_search<T: Ord + Clone>(
     }
 }
 
-pub fn shrink_hashmap_len_binary_search<K: Eq + Hash + Clone, V: Clone>(
-    mut high: HashMap<K, V>,
-) -> impl ShrinkCoro<HashMap<K, V>> {
+pub fn shrink_hashmap_len_binary_search<
+    K: Eq + Hash + Clone,
+    V: Clone,
+    S: BuildHasher + Clone + Default,
+>(
+    mut high: HashMap<K, V, S>,
+) -> impl ShrinkCoro<HashMap<K, V, S>> {
     #[coroutine]
     move |_| {
-        let mut low = HashMap::new();
+        let mut low = HashMap::with_hasher(high.hasher().clone());
 
         match (yield low.clone()) {
             TestResult::Fail => {
@@ -253,7 +253,7 @@ pub fn shrink_hashmap_len_binary_search<K: Eq + Hash + Clone, V: Clone>(
 
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
-            let mid: HashMap<K, V> = high
+            let mid: HashMap<K, V, S> = high
                 .iter()
                 .take(mid_len)
                 .map(|(k, v)| (k.clone(), v.clone()))
@@ -431,6 +431,22 @@ mod tests {
         assert_eq!(smallest_falsifier, expected);
     }
 
-    // TODO Implement a unit test for HashMap where the initial hasher state is controlled in the
-    // test for determimism
+    #[test]
+    fn test_shrink_hashmap_binary_search() {
+        let input = {
+            let mut input = HashMap::with_hasher(FxBuildHasher::default());
+            input.insert(1, ());
+            input.insert(2, ());
+            input.insert(3, ());
+            input
+        };
+        let shrinker = shrink_hashmap_len_binary_search(input);
+        let smallest_falsifier = shrink(|v| !v.contains_key(&1), shrinker);
+        let expected = {
+            let mut expected = HashMap::with_hasher(FxBuildHasher::default());
+            expected.insert(1, ());
+            expected
+        };
+        assert_eq!(smallest_falsifier, expected);
+    }
 }
