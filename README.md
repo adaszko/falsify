@@ -1,6 +1,7 @@
 # Design
 
- * No trait based dispatch (i.e. `Arbitrary`).  Generators and shrinkers are straightforward coroutines instead
+ * No trait based dispatch (`Arbitrary`).  Generators and shrinkers are straightforward coroutines instead
+ * If two tests need a different shape of the tested data type, just combine generators differently.  No awkward newtype wrappers necessary.
  * No macros.  Test cases are composed of function calls, ifs and loops
  * Only implement shrinker when it actually provides value, i.e. a large enough falsifier is found and it needs to be shrunk
  * Panics are caught and treated as test failures subject to shrinking.  An `.unwrap()` in tested code is also a violation of tested properties
