@@ -5,10 +5,10 @@
 //!
 //! let rng = make_test_rng();
 //! let arb = arb_usize(rng);
-//! let test = |n| n < 10;
-//! if let Some(falsifier) = falsify(test, arb) {
+//! let property = |n| n < 10;
+//! if let Some(falsifier) = falsify(property, arb) {
 //!     let shrinker = shrink_usize_binary_search(falsifier);
-//!     let smallest = shrink(test, shrinker);
+//!     let smallest = shrink(property, shrinker);
 //!     assert_eq!(smallest, 10);
 //! }
 //! ```
