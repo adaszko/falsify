@@ -2,6 +2,13 @@
 name = "falsify"
 version = "0.1.0"
 edition = "2024"
+authors = ["Adam Szkoda <adaszko@gmail.com>"]
+description = "Property testing based on coroutines"
+homepage = "https://github.com/adaszko/falsify"
+repository = "https://github.com/adaszko/roaring-graphs"
+keywords = ["property", "testing", "quickcheck", "hypothesis", "proptest"]
+categories = ["development-tools::testing"]
+license = "MIT"
 
 [dependencies]
 rand = "0.10.1"
