@@ -3,7 +3,7 @@
 //! ```
 //! use falsify::*;
 //!
-//! let rng = make_rng();
+//! let rng = make_test_rng();
 //! let arb = arb_usize(rng);
 //! let test = |n| n < 10;
 //! if let Some(falsifier) = falsify(test, arb) {
@@ -17,13 +17,16 @@
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 mod arb;
+mod random;
 mod shrink;
+mod sip;
 mod test_tree_indexes;
 mod test_tree_refs;
 
 pub use arb::*;
 use rand::rngs::StdRng;
 use rand::{SeedableRng, TryRng};
+pub use random::HasherBuilder;
 pub use shrink::*;
 
 use std::cell::RefCell;
@@ -53,7 +56,7 @@ impl From<bool> for TestResult {
 }
 
 /// Takes the seed value from the `FALSIFY_SEED` environment variable, if set.
-pub fn make_rng() -> Rc<RefCell<StdRng>> {
+pub fn make_test_rng() -> Rc<RefCell<StdRng>> {
     let mut std_rng: StdRng = rand::make_rng();
     let seed: u64 = if let Ok(seed_string) = env::var(SEED_ENV_VAR) {
         if let Ok(seed) = seed_string.parse() {
@@ -140,14 +143,14 @@ mod tests {
 
     #[test]
     fn test_arb_usize() {
-        let rng = make_rng();
+        let rng = make_test_rng();
         let arb = arb_usize(rng);
         assert_matches!(falsify(|n| n % 2 == 0 || n % 2 == 1, arb), None);
     }
 
     #[test]
     fn test_arb_vec_of_usize() {
-        let rng = make_rng();
+        let rng = make_test_rng();
         let arb_usize = arb_usize(rng.clone());
         let arb_vec = arb_vec_of(arb_usize, rng, 50);
         assert_matches!(
@@ -166,7 +169,7 @@ mod tests {
 
     #[test]
     fn test_falsify_then_shrink() {
-        let rng = make_rng();
+        let rng = make_test_rng();
         let arb = arb_usize(rng);
         let test = |n| n < 10;
         if let Some(falsifier) = falsify(test, arb) {

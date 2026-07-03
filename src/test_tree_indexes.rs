@@ -234,7 +234,7 @@ fn get_max_tree_depth(arena: &[Expr], node_id: ExprId) -> usize {
 #[test]
 fn test_tree_width_within_limits() {
     let arena = Rc::new(RefCell::new(Vec::new()));
-    let rng = make_rng();
+    let rng = make_test_rng();
     const MAX_WIDTH: usize = 3;
     const MAX_DEPTH: usize = 3;
     let arena_rc = AssertUnwindSafe(Rc::clone(&arena));
@@ -257,7 +257,7 @@ fn test_tree_width_within_limits() {
 #[test]
 fn test_tree_depth_within_limits() {
     let arena = Rc::new(RefCell::new(Vec::new()));
-    let rng = make_rng();
+    let rng = make_test_rng();
     const MAX_WIDTH: usize = 5;
     const MAX_DEPTH: usize = 10;
     let arena_rc = AssertUnwindSafe(Rc::clone(&arena));

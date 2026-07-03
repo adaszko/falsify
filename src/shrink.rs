@@ -83,7 +83,7 @@ pub fn shrink_vec_len_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCo
     }
 }
 
-pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone, S: BuildHasher + Clone + Default>(
+pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone, S: BuildHasher + Clone>(
     mut high: HashSet<T, S>,
 ) -> impl ShrinkCoro<HashSet<T, S>> {
     #[coroutine]
@@ -99,7 +99,13 @@ pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone, S: BuildHasher + C
 
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
-            let mid: HashSet<T, S> = high.iter().take(mid_len).cloned().collect();
+            let mid = {
+                let mut mid = HashSet::with_hasher(high.hasher().clone());
+                for elem in high.iter().take(mid_len) {
+                    mid.insert(elem.clone());
+                }
+                mid
+            };
             match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
@@ -233,11 +239,7 @@ pub fn shrink_linked_list_len_binary_search<T: Ord + Clone>(
     }
 }
 
-pub fn shrink_hashmap_len_binary_search<
-    K: Eq + Hash + Clone,
-    V: Clone,
-    S: BuildHasher + Clone + Default,
->(
+pub fn shrink_hashmap_len_binary_search<K: Eq + Hash + Clone, V: Clone, S: BuildHasher + Clone>(
     mut high: HashMap<K, V, S>,
 ) -> impl ShrinkCoro<HashMap<K, V, S>> {
     #[coroutine]
@@ -253,11 +255,13 @@ pub fn shrink_hashmap_len_binary_search<
 
         while high.len() > low.len() + 1 {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
-            let mid: HashMap<K, V, S> = high
-                .iter()
-                .take(mid_len)
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect();
+            let mid = {
+                let mut mid = HashMap::with_hasher(high.hasher().clone());
+                for (k, v) in high.iter().take(mid_len) {
+                    mid.insert(k.clone(), v.clone());
+                }
+                mid
+            };
             match (yield mid.clone()) {
                 TestResult::Fail => {
                     high = mid;
@@ -357,7 +361,11 @@ pub fn shrink<T: Clone + RefUnwindSafe>(
 
 #[cfg(test)]
 mod tests {
-    use std::hash::DefaultHasher;
+    use rand::RngExt;
+
+    use crate::{make_rng_with_seed, make_test_rng};
+
+    use crate::random::HasherBuilder;
 
     use super::*;
 
@@ -411,32 +419,34 @@ mod tests {
         assert_eq!(smallest_falsifier, BTreeMap::from([(1, ())]));
     }
 
-    #[derive(Default, Clone)]
-    pub struct DeterministicDefaultHasher;
-
-    impl BuildHasher for DeterministicDefaultHasher {
-        type Hasher = DefaultHasher;
-
-        fn build_hasher(&self) -> Self::Hasher {
-            DefaultHasher::new()
-        }
-    }
-
     #[test]
     fn test_shrink_hashset_binary_search() {
+        let rng = make_test_rng();
+
+        // We use multiple `SeedableRandomState`s here and for the test to be reproducible, we need
+        // to initialize all of them to the same value (which can be arbitrary).
+        let controlled_seed = {
+            let mut r = rng.borrow_mut();
+            let seed: u64 = r.random();
+            seed
+        };
+
         let input = {
-            let mut input: HashSet<_, DeterministicDefaultHasher> = Default::default();
+            let builder = HasherBuilder::new(make_rng_with_seed(controlled_seed));
+            let mut input = HashSet::with_hasher(builder);
             input.insert(1);
             input.insert(2);
             input.insert(3);
             input
         };
+        let elem = input.iter().next().unwrap().clone();
         let shrinker = shrink_hashset_len_binary_search(input);
-        let smallest_falsifier = shrink(|v| !v.contains(&1), shrinker);
+        let smallest_falsifier = shrink(|v| !v.contains(&elem), shrinker);
 
         let expected = {
-            let mut expected: HashSet<_, DeterministicDefaultHasher> = Default::default();
-            expected.insert(1);
+            let builder = HasherBuilder::new(make_rng_with_seed(controlled_seed));
+            let mut expected = HashSet::with_hasher(builder);
+            expected.insert(elem);
             expected
         };
         assert_eq!(smallest_falsifier, expected);
@@ -444,18 +454,31 @@ mod tests {
 
     #[test]
     fn test_shrink_hashmap_binary_search() {
+        let rng = make_test_rng();
+
+        // We use multiple `SeedableRandomState`s here and for the test to be reproducible, we need
+        // to initialize all of them to the same value (which can be arbitrary).
+        let controlled_seed = {
+            let mut r = rng.borrow_mut();
+            let seed: u64 = r.random();
+            seed
+        };
+
         let input = {
-            let mut input: HashMap<_, _, DeterministicDefaultHasher> = Default::default();
+            let builder = HasherBuilder::new(make_rng_with_seed(controlled_seed));
+            let mut input = HashMap::with_hasher(builder);
             input.insert(1, ());
             input.insert(2, ());
             input.insert(3, ());
             input
         };
+        let k = input.iter().next().unwrap().0.clone();
         let shrinker = shrink_hashmap_len_binary_search(input);
-        let smallest_falsifier = shrink(|v| !v.contains_key(&1), shrinker);
+        let smallest_falsifier = shrink(|v| !v.contains_key(&k), shrinker);
         let expected = {
-            let mut expected: HashMap<_, _, DeterministicDefaultHasher> = Default::default();
-            expected.insert(1, ());
+            let builder = HasherBuilder::new(make_rng_with_seed(controlled_seed));
+            let mut expected = HashMap::with_hasher(builder);
+            expected.insert(k, ());
             expected
         };
         assert_eq!(smallest_falsifier, expected);

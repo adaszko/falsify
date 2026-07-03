@@ -194,7 +194,7 @@ fn get_max_tree_depth(node_id: Rc<Expr>) -> usize {
 
 #[test]
 fn test_tree_width_within_limits() {
-    let rng = make_rng();
+    let rng = make_test_rng();
     const MAX_WIDTH: usize = 5;
     const MAX_DEPTH: usize = 10;
     let arb = arb_expr(rng, MAX_WIDTH, MAX_DEPTH);
@@ -205,7 +205,7 @@ fn test_tree_width_within_limits() {
 
 #[test]
 fn test_tree_depth_within_limits() {
-    let rng = make_rng();
+    let rng = make_test_rng();
     const MAX_WIDTH: usize = 5;
     const MAX_DEPTH: usize = 10;
     let arb = arb_expr(rng, MAX_WIDTH, MAX_DEPTH);
