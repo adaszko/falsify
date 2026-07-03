@@ -1,8 +1,9 @@
 # Design
 
  * No trait based dispatch (`Arbitrary`).  Generators and shrinkers are straightforward coroutines instead
- * If two tests need a different shape of the tested data type, just combine generators differently.  No awkward newtype wrappers necessary.
+ * If two tests need a different shape of the tested data type, just combine generators differently.  No newtype wrappers necessary.
  * No macros.  Test cases are composed of function calls, ifs and loops
+ * Linear, top to bottom test code
  * Only implement shrinker when it actually provides value, i.e. a large enough falsifier is found and it needs to be shrunk
  * Panics are caught and treated as test failures subject to shrinking.  An `.unwrap()` in tested code is also a violation of tested properties
  * RNG seed value is printed on stderr.  Use `cargo test -- ... --nocapture` to grab it
