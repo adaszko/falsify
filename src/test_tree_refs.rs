@@ -38,15 +38,12 @@ fn arb_term(rng: Rc<RefCell<StdRng>>) -> impl ArbGen<Rc<Expr>> {
     }
 }
 
-fn arb_opt(
-    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>>>,
-    remaining_depth: usize,
-) -> impl ArbGen<Rc<Expr>> {
+fn arb_opt(child_coro: Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>) -> impl ArbGen<Rc<Expr>> {
     #[coroutine]
     move || {
         loop {
             let child = {
-                let mut coro = coro_from_depth[remaining_depth - 1].borrow_mut();
+                let mut coro = child_coro.borrow_mut();
                 match pin!(coro.deref_mut()).resume(()) {
                     CoroutineState::Yielded(child_id) => child_id,
                     CoroutineState::Complete(()) => return (),
@@ -60,14 +57,12 @@ fn arb_opt(
 
 fn arb_alt(
     rng: Rc<RefCell<StdRng>>,
+    child_coro: Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>,
     max_width: usize,
-    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>>>,
-    remaining_depth: usize,
 ) -> impl ArbGen<Rc<Expr>> {
     #[coroutine]
     move || {
-        let coro = Rc::clone(&coro_from_depth[remaining_depth - 1]);
-        let mut arb_vec_coro = arb_vec_of_rc_refcell_of(coro, Rc::clone(&rng), max_width);
+        let mut arb_vec_coro = arb_vec_of_rc_refcell_of(child_coro, Rc::clone(&rng), max_width);
         loop {
             let children = match pin!(&mut arb_vec_coro).resume(()) {
                 CoroutineState::Yielded(subexpr) => subexpr,
@@ -80,33 +75,31 @@ fn arb_alt(
     }
 }
 
-fn do_arb_expr(
+fn do_arb_expr_depth_1(rng: Rc<RefCell<StdRng>>) -> Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>> {
+    let coro = #[coroutine]
+    move || {
+        let mut term = arb_term(Rc::clone(&rng));
+        loop {
+            let expr_id = match pin!(&mut term).resume(()) {
+                CoroutineState::Yielded(child_id) => child_id,
+                CoroutineState::Complete(()) => return (),
+            };
+            yield expr_id;
+        }
+    };
+    Rc::new(RefCell::new(coro))
+}
+
+fn do_arb_expr_depth_n(
     rng: Rc<RefCell<StdRng>>,
     max_width: usize,
-    coro_from_depth: Rc<Vec<Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>>>,
-    remaining_depth: usize,
+    child_coro: Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>,
 ) -> Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>> {
     let coro = #[coroutine]
     move || {
         let mut term = arb_term(Rc::clone(&rng));
-
-        if remaining_depth == 1 {
-            loop {
-                let expr_id = match pin!(&mut term).resume(()) {
-                    CoroutineState::Yielded(child_id) => child_id,
-                    CoroutineState::Complete(()) => return (),
-                };
-                yield expr_id;
-            }
-        }
-
-        let mut opt = arb_opt(Rc::clone(&coro_from_depth), remaining_depth - 1);
-        let mut alt = arb_alt(
-            Rc::clone(&rng),
-            max_width,
-            Rc::clone(&coro_from_depth),
-            remaining_depth - 1,
-        );
+        let mut opt = arb_opt(Rc::clone(&child_coro));
+        let mut alt = arb_alt(Rc::clone(&rng), Rc::clone(&child_coro), max_width);
 
         let mut unexhausted_variants = vec![0, 1, 2];
         while unexhausted_variants.len() > 0 {
@@ -151,20 +144,14 @@ fn arb_expr(
 ) -> impl ArbGen<Rc<Expr>> + Unpin {
     #[coroutine]
     move || {
-        let mut coro_from_depth: Vec<Rc<RefCell<dyn ArbGen<Rc<Expr>> + Unpin>>> =
-            Default::default();
-        for i in 0..max_depth {
-            let coro = do_arb_expr(
-                Rc::clone(&rng),
-                max_width,
-                Rc::new(coro_from_depth[0..i].to_owned()),
-                i,
-            );
-            coro_from_depth.push(coro);
+        let mut coro = do_arb_expr_depth_1(Rc::clone(&rng));
+        for _ in 2..max_depth {
+            coro = do_arb_expr_depth_n(Rc::clone(&rng), max_width, coro);
         }
+
         loop {
             let expr_id = {
-                let mut expr = coro_from_depth[max_depth - 1].borrow_mut();
+                let mut expr = coro.borrow_mut();
                 let expr_id = match pin!(expr.deref_mut()).resume(()) {
                     CoroutineState::Yielded(expr_id) => expr_id,
                     CoroutineState::Complete(()) => return (),
