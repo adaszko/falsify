@@ -270,6 +270,17 @@ impl Sip for Sip13Rounds {
     }
 }
 
+/// All `HashSet`/`HashMap` collections in tested code need to use this `HasherBuilder` for the
+/// tests to be reproducible!
+///
+/// ```
+/// use std::collections::HashSet;
+/// use falsify::{make_rng_with_seed, HasherBuilder};
+///
+/// let builder = HasherBuilder::new(make_rng_with_seed(0x12345678));
+/// let mut input = HashSet::with_hasher(builder);
+/// input.insert(1);
+/// ```
 #[derive(Clone)]
 pub struct HasherBuilder {
     k0: u64,
