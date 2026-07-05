@@ -49,13 +49,57 @@ arb_primitive_type!(arb_i128, i128);
 
 arb_primitive_type!(arb_char, char);
 
+pub fn arb_isize(rng: Rc<RefCell<StdRng>>) -> impl ArbGen<isize> {
+    cfg_select! {
+        target_pointer_width = "64" => {
+            #[coroutine]
+            move || {
+                loop {
+                    let value: i64 = {
+                        let mut r = rng.borrow_mut();
+                        r.random()
+                    };
+                    yield value as isize;
+                }
+            }
+        }
+        target_pointer_width = "32" => {
+            #[coroutine]
+            move || {
+                loop {
+                    let value: i32 = {
+                        let mut r = rng.borrow_mut();
+                        r.random()
+                    };
+                    yield value as isize;
+                }
+            }
+        }
+        target_pointer_width = "16" => {
+            #[coroutine]
+            move || {
+                loop {
+                    let value: i16 = {
+                        let mut r = rng.borrow_mut();
+                        r.random()
+                    };
+                    yield value as isize;
+                }
+            }
+        }
+        _ => {
+            compile_error!("Unsupported pointer width!");
+        }
+    }
+}
+
 pub fn arb_usize(rng: Rc<RefCell<StdRng>>) -> impl ArbGen<usize> {
     #[coroutine]
     move || {
         loop {
             let value: usize = {
                 let mut r = rng.borrow_mut();
-                r.random_range(usize::MIN..usize::MAX)
+                r.random_range(usize::MIN..=usize::MAX)
             };
             yield value;
         }

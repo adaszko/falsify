@@ -8,8 +8,8 @@
 //! let property = |n| n < 10;
 //! if let Some(falsifier) = falsify(property, arb) {
 //!     let shrinker = shrink_usize_binary_search(falsifier);
-//!     let smallest = shrink(property, shrinker);
-//!     assert_eq!(smallest, 10);
+//!     let smallest_falsifier = shrink(property, shrinker);
+//!     assert_eq!(smallest_falsifier, 10);
 //! }
 //! ```
 
