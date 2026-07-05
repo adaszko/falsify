@@ -144,6 +144,31 @@ pub fn arb_tuple3_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<(T, T,
     }
 }
 
+pub fn arb_string(rng: Rc<RefCell<StdRng>>, max_len: usize) -> impl ArbGen<String> {
+    #[coroutine]
+    move || {
+        loop {
+            let len = {
+                let mut r = rng.borrow_mut();
+                r.random_range(0..max_len)
+            };
+            let mut arb_c = arb_char(Rc::clone(&rng));
+            let mut v = String::with_capacity(len);
+            for _ in 0..len {
+                let c = match pin!(&mut arb_c).resume(()) {
+                    CoroutineState::Yielded(t) => t,
+                    CoroutineState::Complete(()) => {
+                        yield v;
+                        return ();
+                    }
+                };
+                v.push(c);
+            }
+            yield v;
+        }
+    }
+}
+
 pub fn arb_vec_of<T>(
     mut arb_t: impl ArbGen<T> + Unpin,
     rng: Rc<RefCell<StdRng>>,
@@ -478,5 +503,21 @@ pub fn arb_rc_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Rc<T>> {
             };
             yield Rc::new(t);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{falsify, make_test_rng};
+    use std::assert_matches;
+
+    use super::*;
+
+    #[test]
+    fn test_arb_string() {
+        let rng = make_test_rng();
+        let arb_s = arb_string(rng, 10);
+        let prop = |s: String| s.chars().count() <= 10;
+        assert_matches!(falsify(prop, arb_s), None);
     }
 }
