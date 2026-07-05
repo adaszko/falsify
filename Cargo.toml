@@ -1,11 +1,11 @@
 [package]
 name = "falsify"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 authors = ["Adam Szkoda <adaszko@gmail.com>"]
 description = "Property testing based on coroutines"
 homepage = "https://github.com/adaszko/falsify"
-repository = "https://github.com/adaszko/roaring-graphs"
+repository = "https://github.com/adaszko/falsify"
 keywords = ["property", "testing", "quickcheck", "hypothesis", "proptest"]
 categories = ["development-tools::testing"]
 license = "MIT"
