@@ -365,7 +365,7 @@ mod tests {
 
     use crate::{make_rng_with_seed, make_test_rng};
 
-    use crate::random::HasherBuilder;
+    use crate::sip::HasherBuilder;
 
     use super::*;
 

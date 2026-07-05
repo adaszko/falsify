@@ -17,7 +17,6 @@
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 mod arb;
-mod random;
 mod shrink;
 mod sip;
 mod test_tree_indexes;
@@ -26,8 +25,8 @@ mod test_tree_refs;
 pub use arb::*;
 use rand::rngs::StdRng;
 use rand::{SeedableRng, TryRng};
-pub use random::HasherBuilder;
 pub use shrink::*;
+pub use sip::HasherBuilder;
 
 use std::cell::RefCell;
 use std::env;
