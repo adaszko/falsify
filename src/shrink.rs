@@ -24,6 +24,37 @@ pub fn shrink_bool(high: bool) -> impl ShrinkCoro<bool> {
     }
 }
 
+// https://doc.rust-lang.org/reference/types/char.html#r-type.char.value
+pub fn shrink_char_binary_search(high_char: char) -> impl ShrinkCoro<char> {
+    #[coroutine]
+    move |_| {
+        let mut high: u32 = high_char as u32;
+        let mut low: u32 = if high <= 0xD7FF { 0 } else { 0xE000 };
+
+        match (yield char::from_u32(low).unwrap()) {
+            TestResult::Fail => {
+                high = low;
+            }
+            TestResult::Pass | TestResult::Reject => {}
+        }
+
+        while low + 1 < high {
+            let mid = low + ((high - low) / 2);
+            match (yield char::from_u32(mid).unwrap()) {
+                TestResult::Fail => {
+                    // test failed after previously failing -- narrow down the range further
+                    high = mid;
+                }
+                TestResult::Pass | TestResult::Reject => {
+                    // test succeeded after previously failing
+                    low = mid;
+                }
+            }
+        }
+        char::from_u32(high).unwrap()
+    }
+}
+
 macro_rules! shrink_primitive_type_binary_search {
     ($fn:ident, $ty:ty) => {
         pub fn $fn(mut high: $ty) -> impl ShrinkCoro<$ty> {
