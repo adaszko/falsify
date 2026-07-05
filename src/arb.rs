@@ -11,18 +11,43 @@ use std::rc::Rc;
 pub trait ArbGen<Y>: Coroutine<Yield = Y, Return = ()> {}
 impl<X, Y> ArbGen<Y> for X where X: Coroutine<Yield = Y, Return = ()> {}
 
-pub fn arb_bool(rng: Rc<RefCell<StdRng>>) -> impl ArbGen<bool> {
-    #[coroutine]
-    move || {
-        loop {
-            let value: bool = {
-                let mut r = rng.borrow_mut();
-                r.random()
-            };
-            yield value;
+macro_rules! arb_primitive_type {
+    ($fn:ident, $ty:ty) => {
+        pub fn $fn(rng: Rc<RefCell<StdRng>>) -> impl ArbGen<$ty> {
+            #[coroutine]
+            move || {
+                loop {
+                    let value: $ty = {
+                        let mut r = rng.borrow_mut();
+                        r.random()
+                    };
+                    yield value;
+                }
+            }
         }
-    }
+    };
 }
+
+arb_primitive_type!(arb_u8, u8);
+arb_primitive_type!(arb_i8, i8);
+
+arb_primitive_type!(arb_bool, bool);
+
+arb_primitive_type!(arb_u16, u16);
+arb_primitive_type!(arb_i16, i16);
+
+arb_primitive_type!(arb_u32, u32);
+arb_primitive_type!(arb_i32, i32);
+arb_primitive_type!(arb_f32, f32);
+
+arb_primitive_type!(arb_u64, u64);
+arb_primitive_type!(arb_i64, i64);
+arb_primitive_type!(arb_f64, f64);
+
+arb_primitive_type!(arb_u128, u128);
+arb_primitive_type!(arb_i128, i128);
+
+arb_primitive_type!(arb_char, char);
 
 pub fn arb_usize(rng: Rc<RefCell<StdRng>>) -> impl ArbGen<usize> {
     #[coroutine]
