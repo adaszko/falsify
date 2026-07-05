@@ -10,34 +10,72 @@ use crate::TestResult;
 pub trait ShrinkCoro<Y>: Coroutine<TestResult, Yield = Y, Return = Y> {}
 impl<X, Y> ShrinkCoro<Y> for X where X: Coroutine<TestResult, Yield = Y, Return = Y> {}
 
-pub fn shrink_usize_binary_search(mut high: usize) -> impl ShrinkCoro<usize> {
+pub fn shrink_bool(high: bool) -> impl ShrinkCoro<bool> {
     #[coroutine]
     move |_| {
-        let mut low = 0;
-
-        match (yield low) {
-            TestResult::Fail => {
-                high = low;
-            }
-            TestResult::Pass | TestResult::Reject => {}
+        if high == false {
+            return false;
         }
 
-        while low + 1 < high {
-            let mid = low + ((high - low) / 2);
-            match (yield mid) {
-                TestResult::Fail => {
-                    // test failed after previously failing -- narrow down the range further
-                    high = mid;
-                }
-                TestResult::Pass | TestResult::Reject => {
-                    // test succeeded after previously failing
-                    low = mid;
-                }
-            }
+        match (yield false) {
+            TestResult::Fail => false,
+            TestResult::Pass | TestResult::Reject => true,
         }
-        high
     }
 }
+
+macro_rules! shrink_primitive_type_binary_search {
+    ($fn:ident, $ty:ty) => {
+        pub fn $fn(mut high: $ty) -> impl ShrinkCoro<$ty> {
+            #[coroutine]
+            move |_| {
+                let mut low = <$ty>::MIN;
+
+                match (yield low) {
+                    TestResult::Fail => {
+                        high = low;
+                    }
+                    TestResult::Pass | TestResult::Reject => {}
+                }
+
+                while low + 1 as $ty < high {
+                    let mid = low + ((high - low) / 2 as $ty);
+                    match (yield mid) {
+                        TestResult::Fail => {
+                            // test failed after previously failing -- narrow down the range further
+                            high = mid;
+                        }
+                        TestResult::Pass | TestResult::Reject => {
+                            // test succeeded after previously failing
+                            low = mid;
+                        }
+                    }
+                }
+                high
+            }
+        }
+    };
+}
+
+shrink_primitive_type_binary_search!(shrink_u8_binary_search, u8);
+shrink_primitive_type_binary_search!(shrink_i8_binary_search, i8);
+
+shrink_primitive_type_binary_search!(shrink_u16_binary_search, u16);
+shrink_primitive_type_binary_search!(shrink_i16_binary_search, i16);
+
+shrink_primitive_type_binary_search!(shrink_u32_binary_search, u32);
+shrink_primitive_type_binary_search!(shrink_i32_binary_search, i32);
+shrink_primitive_type_binary_search!(shrink_f32, f32);
+
+shrink_primitive_type_binary_search!(shrink_u64_binary_search, u64);
+shrink_primitive_type_binary_search!(shrink_i64_binary_search, i64);
+shrink_primitive_type_binary_search!(shrink_f64, f64);
+
+shrink_primitive_type_binary_search!(shrink_u128_binary_search, u128);
+shrink_primitive_type_binary_search!(shrink_i128_binary_search, i128);
+
+shrink_primitive_type_binary_search!(shrink_usize_binary_search, usize);
+shrink_primitive_type_binary_search!(shrink_isize_binary_search, isize);
 
 pub fn shrink_usize_exhaustive(falsifier: usize) -> impl ShrinkCoro<usize> {
     #[coroutine]
