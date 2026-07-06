@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Coroutine, CoroutineState};
-use std::panic::{catch_unwind, RefUnwindSafe};
+use std::panic::{RefUnwindSafe, catch_unwind};
 use std::pin::pin;
 
 use crate::TestResult;

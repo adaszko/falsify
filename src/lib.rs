@@ -17,7 +17,7 @@
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 mod arb;
-mod shrink;
+mod shrinking;
 mod sip;
 mod test_tree_indexes;
 mod test_tree_refs;
@@ -25,7 +25,7 @@ mod test_tree_refs;
 pub use arb::*;
 use rand::rngs::StdRng;
 use rand::{SeedableRng, TryRng};
-pub use shrink::*;
+pub use shrinking::*;
 pub use sip::HasherBuilder;
 
 use std::cell::RefCell;
@@ -138,6 +138,7 @@ pub fn falsify_with_reset<T: Clone + RefUnwindSafe>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use shrinking::{shrink, shrink_usize_binary_search};
     use std::assert_matches;
 
     #[test]
