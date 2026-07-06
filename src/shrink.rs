@@ -29,28 +29,62 @@ pub fn shrink_char_binary_search(high_char: char) -> impl ShrinkCoro<char> {
     #[coroutine]
     move |_| {
         let mut high: u32 = high_char as u32;
-        let mut low: u32 = if high <= 0xD7FF { 0 } else { 0xE000 };
 
-        match (yield char::from_u32(low).unwrap()) {
-            TestResult::Fail => {
-                high = low;
-            }
-            TestResult::Pass | TestResult::Reject => {}
-        }
+        if high >= 0xE000 {
+            let mut low: u32 = 0xE000;
 
-        while low + 1 < high {
-            let mid = low + ((high - low) / 2);
-            match (yield char::from_u32(mid).unwrap()) {
+            match (yield char::from_u32(low).unwrap()) {
                 TestResult::Fail => {
-                    // test failed after previously failing -- narrow down the range further
-                    high = mid;
+                    high = low;
                 }
-                TestResult::Pass | TestResult::Reject => {
-                    // test succeeded after previously failing
-                    low = mid;
+                TestResult::Pass | TestResult::Reject => {}
+            }
+
+            while low + 1 < high {
+                let mid = low + ((high - low) / 2);
+                match (yield char::from_u32(mid).unwrap()) {
+                    TestResult::Fail => {
+                        // test failed after previously failing -- narrow down the range further
+                        high = mid;
+                    }
+                    TestResult::Pass | TestResult::Reject => {
+                        // test succeeded after previously failing
+                        low = mid;
+                    }
                 }
             }
         }
+
+        if high == 0xE000 {
+            let mut high = 0xD7FF;
+            let mut low: u32 = 0;
+
+            match (yield char::from_u32(low).unwrap()) {
+                TestResult::Fail => {
+                    high = low;
+                }
+                TestResult::Pass | TestResult::Reject => {}
+            }
+
+            while low + 1 < high {
+                let mid = low + ((high - low) / 2);
+                match (yield char::from_u32(mid).unwrap()) {
+                    TestResult::Fail => {
+                        // test failed after previously failing -- narrow down the range further
+                        high = mid;
+                    }
+                    TestResult::Pass | TestResult::Reject => {
+                        // test succeeded after previously failing
+                        low = mid;
+                    }
+                }
+            }
+
+            if high < 0xD7FF {
+                return char::from_u32(high).unwrap();
+            }
+        }
+
         char::from_u32(high).unwrap()
     }
 }
