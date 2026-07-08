@@ -167,7 +167,7 @@ pub fn shrink_vec_len_binary_search<T: Clone>(mut high: Vec<T>) -> impl ShrinkCo
             TestResult::Pass | TestResult::Reject => {}
         }
 
-        while high.len() > low.len() + 1 {
+        while low.len() + 1 < high.len() {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid = high[0..mid_len].to_vec();
             match (yield mid.clone()) {
@@ -197,7 +197,7 @@ pub fn shrink_hashset_len_binary_search<T: Eq + Hash + Clone, S: BuildHasher + C
             TestResult::Pass | TestResult::Reject => {}
         }
 
-        while high.len() > low.len() + 1 {
+        while low.len() + 1 < high.len() {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid = {
                 let mut mid = HashSet::with_hasher(high.hasher().clone());
@@ -233,7 +233,7 @@ pub fn shrink_btreeset_len_binary_search<T: Ord + Clone>(
             TestResult::Pass | TestResult::Reject => {}
         }
 
-        while high.len() > low.len() + 1 {
+        while low.len() + 1 < high.len() {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: BTreeSet<T> = high.iter().take(mid_len).cloned().collect();
             match (yield mid.clone()) {
@@ -263,7 +263,7 @@ pub fn shrink_vec_deque_len_binary_search<T: Ord + Clone>(
             TestResult::Pass | TestResult::Reject => {}
         }
 
-        while high.len() > low.len() + 1 {
+        while low.len() + 1 < high.len() {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: VecDeque<T> = high.iter().take(mid_len).cloned().collect();
             match (yield mid.clone()) {
@@ -293,7 +293,7 @@ pub fn shrink_binary_heap_len_binary_search<T: Ord + Clone>(
             TestResult::Pass | TestResult::Reject => {}
         }
 
-        while high.len() > low.len() + 1 {
+        while low.len() + 1 < high.len() {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: BinaryHeap<T> = high.iter().take(mid_len).cloned().collect();
             match (yield mid.clone()) {
@@ -323,7 +323,7 @@ pub fn shrink_linked_list_len_binary_search<T: Ord + Clone>(
             TestResult::Pass | TestResult::Reject => {}
         }
 
-        while high.len() > low.len() + 1 {
+        while low.len() + 1 < high.len() {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: LinkedList<T> = high.iter().take(mid_len).cloned().collect();
             match (yield mid.clone()) {
@@ -353,7 +353,7 @@ pub fn shrink_hashmap_len_binary_search<K: Eq + Hash + Clone, V: Clone, S: Build
             TestResult::Pass | TestResult::Reject => {}
         }
 
-        while high.len() > low.len() + 1 {
+        while low.len() + 1 < high.len() {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid = {
                 let mut mid = HashMap::with_hasher(high.hasher().clone());
@@ -389,7 +389,7 @@ pub fn shrink_btreemap_len_binary_search<K: Ord + Clone, V: Clone>(
             TestResult::Pass | TestResult::Reject => {}
         }
 
-        while high.len() > low.len() + 1 {
+        while low.len() + 1 < high.len() {
             let mid_len = low.len() + ((high.len() - low.len()) / 2);
             let mid: BTreeMap<K, V> = high
                 .iter()
