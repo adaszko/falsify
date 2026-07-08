@@ -19,7 +19,6 @@
 mod arb;
 mod shrinking;
 mod sip;
-mod test_tree_indexes;
 
 pub use arb::*;
 use rand::rngs::StdRng;
