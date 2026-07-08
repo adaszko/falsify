@@ -144,17 +144,14 @@ shrink_primitive_type_binary_search!(shrink_isize_binary_search, isize);
 
 pub fn shrink_usize_exhaustive(falsifier: usize) -> impl ShrinkCoro<usize> {
     #[coroutine]
-    move |_| {
-        let smallest_falsifier = 'search: {
-            for value in 0..=falsifier {
-                match (yield value) {
-                    TestResult::Fail => break 'search value,
-                    TestResult::Pass | TestResult::Reject => continue,
-                }
+    move |_| 'search: {
+        for value in 0..=falsifier {
+            match (yield value) {
+                TestResult::Fail => break 'search value,
+                TestResult::Pass | TestResult::Reject => continue,
             }
-            falsifier
-        };
-        smallest_falsifier
+        }
+        falsifier
     }
 }
 

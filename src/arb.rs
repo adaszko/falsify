@@ -95,11 +95,11 @@ pub fn arb_tuple2_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<(T, T)
         loop {
             let t0 = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
-                CoroutineState::Complete(()) => return (),
+                CoroutineState::Complete(()) => return,
             };
             let t1 = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
-                CoroutineState::Complete(()) => return (),
+                CoroutineState::Complete(()) => return,
             };
             yield (t0, t1);
         }
@@ -112,15 +112,15 @@ pub fn arb_tuple3_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<(T, T,
         loop {
             let t0 = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
-                CoroutineState::Complete(()) => return (),
+                CoroutineState::Complete(()) => return,
             };
             let t1 = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
-                CoroutineState::Complete(()) => return (),
+                CoroutineState::Complete(()) => return,
             };
             let t2 = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
-                CoroutineState::Complete(()) => return (),
+                CoroutineState::Complete(()) => return,
             };
             yield (t0, t1, t2);
         }
@@ -142,7 +142,7 @@ pub fn arb_string(rng: Rc<RefCell<StdRng>>, max_len: usize) -> impl ArbGen<Strin
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield v;
-                        return ();
+                        return;
                     }
                 };
                 v.push(c);
@@ -170,7 +170,7 @@ pub fn arb_vec_of<T>(
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield v;
-                        return ();
+                        return;
                     }
                 };
                 v.push(t);
@@ -198,7 +198,7 @@ pub fn arb_vec_deque_of<T>(
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield q;
-                        return ();
+                        return;
                     }
                 };
                 let direction: bool = {
@@ -234,7 +234,7 @@ pub fn arb_binary_heap_of<T: Ord>(
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield h;
-                        return ();
+                        return;
                     }
                 };
                 h.push(t);
@@ -262,7 +262,7 @@ pub fn arb_linked_list_of<T: Ord>(
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield l;
-                        return ();
+                        return;
                     }
                 };
                 let direction: bool = {
@@ -298,7 +298,7 @@ pub fn arb_hashset_of<T: Hash + Eq>(
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield set;
-                        return ();
+                        return;
                     }
                 };
                 set.insert(t);
@@ -326,7 +326,7 @@ pub fn arb_btreeset_of<T: Ord>(
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield set;
-                        return ();
+                        return;
                     }
                 };
                 set.insert(t);
@@ -355,14 +355,14 @@ pub fn arb_hashmap_of<K: Eq + Hash, V>(
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield map;
-                        return ();
+                        return;
                     }
                 };
                 let v = match pin!(&mut arb_val).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield map;
-                        return ();
+                        return;
                     }
                 };
                 map.insert(k, v);
@@ -391,14 +391,14 @@ pub fn arb_btreemap_of<K: Ord, V>(
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield map;
-                        return ();
+                        return;
                     }
                 };
                 let v = match pin!(&mut arb_val).resume(()) {
                     CoroutineState::Yielded(t) => t,
                     CoroutineState::Complete(()) => {
                         yield map;
-                        return ();
+                        return;
                     }
                 };
                 map.insert(k, v);
@@ -426,7 +426,7 @@ pub fn arb_vec_of_rc_refcell_of<T>(
                 for _ in 0..len {
                     let t = match pin!(inner.deref_mut()).resume(()) {
                         CoroutineState::Yielded(t) => t,
-                        CoroutineState::Complete(()) => return (),
+                        CoroutineState::Complete(()) => return,
                     };
                     v.push(t);
                 }
@@ -443,7 +443,7 @@ pub fn arb_option_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Option
         loop {
             let t = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
-                CoroutineState::Complete(()) => return (),
+                CoroutineState::Complete(()) => return,
             };
             yield Some(t);
         }
@@ -456,7 +456,7 @@ pub fn arb_result_of<T, E>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Res
         loop {
             let t = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
-                CoroutineState::Complete(()) => return (),
+                CoroutineState::Complete(()) => return,
             };
             yield Ok(t);
         }
@@ -469,7 +469,7 @@ pub fn arb_box_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Box<T>> {
         loop {
             let t = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
-                CoroutineState::Complete(()) => return (),
+                CoroutineState::Complete(()) => return,
             };
             yield Box::new(t);
         }
@@ -482,7 +482,7 @@ pub fn arb_rc_of<T>(mut arb_t: impl ArbGen<T> + Unpin) -> impl ArbGen<Rc<T>> {
         loop {
             let t = match pin!(&mut arb_t).resume(()) {
                 CoroutineState::Yielded(t) => t,
-                CoroutineState::Complete(()) => return (),
+                CoroutineState::Complete(()) => return,
             };
             yield Rc::new(t);
         }
