@@ -1,5 +1,6 @@
 # Design
 
+ * `falsify` allows you to **easily vary random values generation (and shrinking) tactic per test case** without newtype wrappers
  * No trait based dispatch (`Arbitrary`).  Generators and shrinkers are straightforward coroutines instead
  * If two tests need a different shape of the tested data type, just combine generators differently.  No newtype wrappers necessary.
  * No macros.  Test cases are composed of function calls, ifs and loops
@@ -11,6 +12,16 @@
  * Need a custom generator that produces only a subset of possible values of a given type?  Just copy paste
    the generic generator code and specialize for your requirements.  There's no "You wanted a banana but what
    you got was a gorilla holding the banana and the entire jungle."
+
+# Worflow
+
+1. Write a property test
+2. Run the test to find a falsifier
+3. If the falsifier is too big, implement a shrinker and run it
+4. If the falsifier is still too big, try another shrinker
+5. Take the falsifier and codify as a separate test case
+6. Fix the broken test
+7. Commit the test as a regression test
 
 # Guidelines for implementing generators/shrinkers
 
